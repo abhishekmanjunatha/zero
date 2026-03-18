@@ -19,11 +19,13 @@ export default async function PracticePage() {
 
   return (
     <PracticeForm
+      dietitianId={user.id}
       defaultValues={
         practice
           ? {
               practice_type: practice.practice_type as 'online_only' | 'clinic_only' | 'both' | undefined,
               clinic_name: practice.clinic_name ?? '',
+              logo_url: practice.logo_url ?? '',
               practice_address: practice.practice_address ?? '',
               city: practice.city ?? '',
               state: practice.state ?? '',

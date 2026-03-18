@@ -24,9 +24,11 @@ import {
   Download,
   MessageCircle,
   BookmarkPlus,
+  AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -35,16 +37,17 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { createClinicalNote, updateClinicalNote } from '@/actions/clinical-notes'
+import { createDocumentTemplate, getDocumentTemplates } from '@/actions/templates'
+import { useLocalDraft } from '@/hooks/use-local-draft'
 import type { DocumentType, DocumentBlock } from '@/types/app'
 import type { Tables, Json } from '@/types/database'
-import { downloadDocumentAsPDF, type DietitianPDFData } from '@/lib/pdf-generator'
+import { downloadDocumentAsPDF, generateDocumentAsPDFBlob, type DietitianPDFData } from '@/lib/pdf-generator'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -71,6 +74,16 @@ interface DocumentComposerProps {
   initialPatient?: PatientContext | null
 }
 
+interface DocumentComposerDraft {
+  docType: DocumentType
+  docTitle: string
+  blocks: DocumentBlock[]
+  includePatientInfo: boolean
+  visitHeight: string
+  visitWeight: string
+  selectedTemplateId: string | null
+}
+
 // ── Document type labels ───────────────────────────────────────────────────
 
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -80,65 +93,78 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   custom: 'Custom Document',
 }
 
-// ── Templates (localStorage, no DB) ─────────────────────────────────────────
+const WHATSAPP_LINK_EXPIRY_SECONDS = 60 * 60 * 24 * 7
+const WHATSAPP_MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+
+// ── Templates ────────────────────────────────────────────────────────────────
 
 interface DocTemplate {
   id: string
   name: string
-  docType: DocumentType
   blocks: DocumentBlock[]
   createdAt: string
 }
 
-const TEMPLATES_KEY = 'peepal_doc_templates'
-
-function loadTemplatesFromStorage(): DocTemplate[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const raw = localStorage.getItem(TEMPLATES_KEY)
-    return raw ? (JSON.parse(raw) as DocTemplate[]) : []
-  } catch {
-    return []
+function createId(): string {
+  if (typeof globalThis !== 'undefined' && typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID()
   }
+
+  const randomPart = Math.random().toString(36).slice(2)
+  return `id-${Date.now()}-${randomPart}`
 }
 
-function saveTemplatesToStorage(templates: DocTemplate[]): void {
-  if (typeof window === 'undefined') return
-  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates))
+function sanitizeContentBlocks(blocks: DocumentBlock[]): DocumentBlock[] {
+  return blocks
+    .filter((b) => b.type !== 'title' && b.type !== 'patient_snapshot')
+    .map((b, index) => ({ ...b, order: index }))
+}
+
+function normalizeTemplateBlocks(raw: Json): DocumentBlock[] {
+  if (!Array.isArray(raw)) return []
+
+  return raw
+    .map((value, index) => {
+      const block = value as Partial<DocumentBlock>
+      return {
+        id: typeof block.id === 'string' ? block.id : `legacy-${index}`,
+        type: block.type === 'meal_section' || block.type === 'instructions' || block.type === 'custom'
+          ? block.type
+          : 'custom',
+        label: typeof block.label === 'string' && block.label.trim() ? block.label : `Section ${index + 1}`,
+        content: typeof block.content === 'string' ? block.content : '',
+        order: index,
+      } satisfies DocumentBlock
+    })
 }
 
 // ── Default blocks per document type ───────────────────────────────────────
 
 function defaultBlocksForType(type: DocumentType): DocumentBlock[] {
-  const id = () => crypto.randomUUID()
   switch (type) {
     case 'meal_plan':
       return [
-        { id: id(), type: 'title', label: 'Plan Title', content: '', order: 0 },
-        { id: id(), type: 'meal_section', label: 'Breakfast', content: '', order: 1 },
-        { id: id(), type: 'meal_section', label: 'Mid-Morning Snack', content: '', order: 2 },
-        { id: id(), type: 'meal_section', label: 'Lunch', content: '', order: 3 },
-        { id: id(), type: 'meal_section', label: 'Evening Snack', content: '', order: 4 },
-        { id: id(), type: 'meal_section', label: 'Dinner', content: '', order: 5 },
-        { id: id(), type: 'instructions', label: 'Instructions', content: '', order: 6 },
+        { id: 'meal-breakfast', type: 'meal_section', label: 'Breakfast', content: '', order: 0 },
+        { id: 'meal-mid-morning-snack', type: 'meal_section', label: 'Mid-Morning Snack', content: '', order: 1 },
+        { id: 'meal-lunch', type: 'meal_section', label: 'Lunch', content: '', order: 2 },
+        { id: 'meal-evening-snack', type: 'meal_section', label: 'Evening Snack', content: '', order: 3 },
+        { id: 'meal-dinner', type: 'meal_section', label: 'Dinner', content: '', order: 4 },
+        { id: 'meal-instructions', type: 'instructions', label: 'Instructions', content: '', order: 5 },
       ]
     case 'follow_up_recommendation':
       return [
-        { id: id(), type: 'title', label: 'Document Title', content: '', order: 0 },
-        { id: id(), type: 'custom', label: 'Progress Summary', content: '', order: 1 },
-        { id: id(), type: 'custom', label: 'Recommendations', content: '', order: 2 },
-        { id: id(), type: 'custom', label: 'Next Steps', content: '', order: 3 },
+        { id: 'follow-up-progress-summary', type: 'custom', label: 'Progress Summary', content: '', order: 0 },
+        { id: 'follow-up-recommendations', type: 'custom', label: 'Recommendations', content: '', order: 1 },
+        { id: 'follow-up-next-steps', type: 'custom', label: 'Next Steps', content: '', order: 2 },
       ]
     case 'quick_note':
       return [
-        { id: id(), type: 'title', label: 'Note Title', content: '', order: 0 },
-        { id: id(), type: 'custom', label: 'Notes', content: '', order: 1 },
+        { id: 'quick-note-notes', type: 'custom', label: 'Notes', content: '', order: 0 },
       ]
     case 'custom':
     default:
       return [
-        { id: id(), type: 'title', label: 'Document Title', content: '', order: 0 },
-        { id: id(), type: 'custom', label: 'Content', content: '', order: 1 },
+        { id: 'custom-content', type: 'custom', label: 'Content', content: '', order: 0 },
       ]
   }
 }
@@ -280,7 +306,6 @@ export function DocumentComposer({
 
   // Patient
   const [patient, setPatient] = useState<PatientContext | null>(initialPatient ?? null)
-  const [patientExpanded, setPatientExpanded] = useState(false)
 
   // Document state
   const [docType, setDocType] = useState<DocumentType>(
@@ -291,8 +316,8 @@ export function DocumentComposer({
     if (existingNote?.content) {
       const parsed = existingNote.content as unknown
       if (Array.isArray(parsed)) {
-        // Strip patient_snapshot blocks — they are regenerated fresh on every save
-        return (parsed as DocumentBlock[]).filter((b) => b.type !== 'patient_snapshot')
+        // Strip legacy internal title/snapshot blocks — title is top-level field.
+        return sanitizeContentBlocks(parsed as DocumentBlock[])
       }
     }
     return defaultBlocksForType(
@@ -306,9 +331,12 @@ export function DocumentComposer({
   // Staged AI result — shown in preview only until the user explicitly applies it
   const [aiEnhancedBlocks, setAiEnhancedBlocks] = useState<DocumentBlock[] | null>(null)
   const [aiRawResult, setAiRawResult] = useState<string | null>(null)
+  const [aiMeta, setAiMeta] = useState<{ isFallback: boolean; reason?: string } | null>(null)
+  const [lastAiAction, setLastAiAction] = useState<'enhance' | 'patient_friendly' | 'suggest' | null>(null)
 
   // Preview — open by default
   const [showPreview, setShowPreview] = useState(true)
+  const [includePatientInfo, setIncludePatientInfo] = useState(true)
   // Stable ref to the rendered preview content div — used for PDF capture
   const previewContentRef = useRef<HTMLDivElement>(null)
 
@@ -321,13 +349,71 @@ export function DocumentComposer({
   const [pdfPending, setPdfPending] = useState(false)
   const [waPending, setWaPending] = useState(false)
   const [dietitianPDFData, setDietitianPDFData] = useState<DietitianPDFData | null>(null)
-  // Templates: stored in localStorage, never in the DB
+  // Templates: loaded from DB per logged-in dietitian
   const [localTemplates, setLocalTemplates] = useState<DocTemplate[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
+  const draftKey = `document-composer-draft:${existingNote?.id ?? preselectedPatientId ?? 'new'}`
+  const { loadDraft, saveDraft, clearDraft } = useLocalDraft<DocumentComposerDraft>({
+    storageKey: draftKey,
+    debounceMs: 600,
+  })
 
-  // Load templates from localStorage (client-side only)
   useEffect(() => {
-    setLocalTemplates(loadTemplatesFromStorage())
+    const draft = loadDraft()
+    if (!draft) return
+
+    setDocType(draft.docType)
+    setDocTitle(draft.docTitle)
+    setBlocks(sanitizeContentBlocks(draft.blocks))
+    setIncludePatientInfo(draft.includePatientInfo)
+    setVisitHeight(draft.visitHeight)
+    setVisitWeight(draft.visitWeight)
+    setSelectedTemplateId(draft.selectedTemplateId)
+  }, [loadDraft])
+
+  useEffect(() => {
+    saveDraft({
+      docType,
+      docTitle,
+      blocks: sanitizeContentBlocks(blocks),
+      includePatientInfo,
+      visitHeight,
+      visitWeight,
+      selectedTemplateId,
+    })
+  }, [
+    blocks,
+    docTitle,
+    docType,
+    includePatientInfo,
+    saveDraft,
+    selectedTemplateId,
+    visitHeight,
+    visitWeight,
+  ])
+
+  // Load templates from DB
+  useEffect(() => {
+    let mounted = true
+
+    const run = async () => {
+      const rows = await getDocumentTemplates()
+      if (!mounted) return
+      setLocalTemplates(
+        rows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          blocks: normalizeTemplateBlocks(row.blocks),
+          createdAt: row.created_at,
+        }))
+      )
+    }
+
+    run()
+
+    return () => {
+      mounted = false
+    }
   }, [])
   useEffect(() => {
     if (patient) return
@@ -378,7 +464,7 @@ export function DocumentComposer({
     setBlocks((prev) => [
       ...prev,
       {
-        id: crypto.randomUUID(),
+        id: createId(),
         type: 'custom',
         label: 'New Section',
         content: '',
@@ -409,43 +495,59 @@ export function DocumentComposer({
 
   // ── Template management ─────────────────────────────────────────────
   const handleSaveTemplate = () => {
-    const name = window.prompt('Template name:', docTitle || 'Untitled Template')
-    if (!name?.trim()) return
-    // Save content blocks only (exclude title/snapshot blocks from the template)
-    const contentBlocks = blocks.filter((b) => b.type !== 'title' && b.type !== 'patient_snapshot')
-    const newTpl: DocTemplate = {
-      id: crypto.randomUUID(),
-      name: name.trim(),
-      docType,
-      blocks: contentBlocks,
-      createdAt: new Date().toISOString(),
+    if (docType !== 'custom') {
+      toast.error('Save as Template is available only for Custom Document type')
+      return
     }
-    const existing = loadTemplatesFromStorage()
-    // Replace any template with the same name (case-insensitive)
-    const filtered = existing.filter((t) => t.name.toLowerCase() !== name.trim().toLowerCase())
-    const updated = [...filtered, newTpl]
-    saveTemplatesToStorage(updated)
-    setLocalTemplates(updated)
-    alert(`Template "${name.trim()}" saved.`)
+
+    const templateName = docTitle.trim()
+    if (!templateName) {
+      toast.error('Enter a title first. The title is used as the template name.')
+      return
+    }
+
+    const contentBlocks = sanitizeContentBlocks(blocks)
+    if (contentBlocks.length === 0) {
+      toast.error('Add at least one section before saving a template.')
+      return
+    }
+
+    startTransition(async () => {
+      const result = await createDocumentTemplate({
+        name: templateName,
+        blocks: contentBlocks,
+      })
+
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+
+      const rows = await getDocumentTemplates()
+      setLocalTemplates(
+        rows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          blocks: normalizeTemplateBlocks(row.blocks),
+          createdAt: row.created_at,
+        }))
+      )
+      toast.success(`Template "${templateName}" saved`)
+    })
   }
 
   const handleLoadTemplate = (tplId: string) => {
     const tpl = localTemplates.find((t) => t.id === tplId)
     if (!tpl) return
-    setDocType(tpl.docType)
-    setBlocks(tpl.blocks.map((b, i) => ({ ...b, id: crypto.randomUUID(), order: i })))
+    setDocType('custom')
+    const sanitized = sanitizeContentBlocks(tpl.blocks)
+    setBlocks(sanitized.map((b, i) => ({ ...b, id: createId(), order: i })))
     setAiEnhancedBlocks(null)
+    setAiRawResult(null)
     setSelectedTemplateId(tplId)
-  }
-
-  const handleDeleteTemplate = (tplId: string) => {
-    const tpl = localTemplates.find((t) => t.id === tplId)
-    if (!tpl) return
-    if (!window.confirm(`Delete template "${tpl.name}"? This cannot be undone.`)) return
-    const updated = localTemplates.filter((t) => t.id !== tplId)
-    saveTemplatesToStorage(updated)
-    setLocalTemplates(updated)
-    if (selectedTemplateId === tplId) setSelectedTemplateId(null)
+    if (!docTitle.trim()) {
+      setDocTitle(tpl.name)
+    }
   }
 
   // ── Document type change ────────────────────────────────────────────
@@ -469,13 +571,15 @@ export function DocumentComposer({
       .join('\n\n')
 
     if (!contentText.trim() && action !== 'suggest') {
-      toast.error('Add some content first before using AI.')
+      toast.error('Add some content before using AI.')
       return
     }
 
     setAiLoading(action)
     setAiEnhancedBlocks(null)
     setAiRawResult(null)
+    setAiMeta(null)
+    setLastAiAction(action)
     try {
       const res = await fetch('/api/ai/enhance-document', {
         method: 'POST',
@@ -501,16 +605,25 @@ export function DocumentComposer({
         }),
       })
 
-      const data = (await res.json()) as { result?: string; error?: string }
+      const data = (await res.json()) as { result?: string; error?: string; _meta?: { isFallback: boolean; reason?: string } }
       if (!res.ok || data.error) {
-        toast.error(data.error ?? 'AI request failed')
+        toast.error(data.error ?? 'AI request failed. Please try again.')
+        setAiLoading(null)
         return
       }
+
+      setAiMeta(data._meta ?? null)
 
       if (action === 'suggest') {
         setAiSuggestions(data.result ?? null)
       } else {
         const aiResult = data.result ?? ''
+        const normalizeLabel = (label: string) =>
+          label
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim()
+
         const rawSections = aiResult.split(/^##\s+/m).filter(Boolean)
 
         // Safety: AI returned unstructured text — show raw output only, never touch blocks
@@ -527,37 +640,45 @@ export function DocumentComposer({
         for (const raw of rawSections) {
           const newlineIdx = raw.indexOf('\n')
           if (newlineIdx === -1) {
-            sectionMap[raw.trim().toLowerCase()] = ''
+            const heading = normalizeLabel(raw.replace(/:$/, '').trim())
+            if (heading) sectionMap[heading] = ''
           } else {
-            const heading = raw.slice(0, newlineIdx).trim().toLowerCase()
+            const heading = normalizeLabel(raw.slice(0, newlineIdx).replace(/:$/, '').trim())
             const content = stripMarkdown(raw.slice(newlineIdx + 1).trim())
-            sectionMap[heading] = content
+            if (heading) sectionMap[heading] = content
           }
         }
 
+        const editableBlocks = blocks.filter((b) => b.type !== 'title' && b.type !== 'patient_snapshot')
         const hasLabelMatches = blocks.some(
-          (b) => b.type !== 'title' && b.label.toLowerCase() in sectionMap
+          (b) => b.type !== 'title' && normalizeLabel(b.label) in sectionMap
         )
+
+        if (!hasLabelMatches && rawSections.length !== editableBlocks.length) {
+          setAiRawResult(stripMarkdown(aiResult))
+          setAiEnhancedBlocks(null)
+          setShowPreview(true)
+          toast.error('AI output format mismatch. Review raw output below and retry.')
+          return
+        }
 
         const enhanced = hasLabelMatches
           ? blocks.map((b) => {
-              if (b.type === 'title') return b
-              const key = b.label.toLowerCase()
+              if (b.type === 'title' || b.type === 'patient_snapshot') return b
+              const key = normalizeLabel(b.label)
               return key in sectionMap ? { ...b, content: sectionMap[key] } : b
             })
           : (() => {
-              // Positional fallback: map by index order
+              // Strict positional fallback only when section counts match.
               const updated = [...blocks]
               let sectionIdx = 0
               for (let i = 0; i < updated.length; i++) {
-                if (updated[i].type === 'title') continue
-                if (sectionIdx < rawSections.length) {
-                  const raw = rawSections[sectionIdx]
-                  const newlineIdx = raw.indexOf('\n')
-                  const content = newlineIdx !== -1 ? raw.slice(newlineIdx + 1).trim() : raw.trim()
-                  updated[i] = { ...updated[i], content: stripMarkdown(content) }
-                  sectionIdx++
-                }
+                if (updated[i].type === 'title' || updated[i].type === 'patient_snapshot') continue
+                const raw = rawSections[sectionIdx]
+                const newlineIdx = raw.indexOf('\n')
+                const content = newlineIdx !== -1 ? raw.slice(newlineIdx + 1).trim() : raw.trim()
+                updated[i] = { ...updated[i], content: stripMarkdown(content) }
+                sectionIdx++
               }
               return updated
             })()
@@ -568,7 +689,9 @@ export function DocumentComposer({
         toast.success('AI enhancement ready — review in preview, then apply')
       }
     } catch {
-      toast.error('Failed to connect to AI service')
+      toast.error('Failed to reach AI service. Please try again.')
+      setAiMeta(null)
+      setLastAiAction(null)
     } finally {
       setAiLoading(null)
     }
@@ -580,12 +703,13 @@ export function DocumentComposer({
     setBlocks(aiEnhancedBlocks)
     setAiEnhancedBlocks(null)
     setAiRawResult(null)
-    toast.success('AI changes applied to editor')
+    toast.success('Changes applied')
   }, [aiEnhancedBlocks])
 
   const handleDiscardAIChanges = useCallback(() => {
     setAiEnhancedBlocks(null)
     setAiRawResult(null)
+    setAiMeta(null)
     toast('AI changes discarded')
   }, [])
 
@@ -617,12 +741,13 @@ export function DocumentComposer({
         dietitian: dtData,
         previewElement: previewEl,
       })
+      clearDraft()
       toast.success('PDF downloaded successfully')
-      router.push('/clinical-notes')
+      router.push(`/patients/${patient.id}`)
       router.refresh()
     } catch (err) {
       console.error('[PDF] generation error:', err)
-      toast.error('Failed to generate PDF')
+      toast.error('Failed to generate PDF. Please try again.')
     } finally {
       setPdfPending(false)
     }
@@ -633,25 +758,128 @@ export function DocumentComposer({
     if (!patient) { toast.error('No patient selected'); return }
     if (!docTitle.trim()) { toast.error('Please enter a document title'); return }
     if (!patient.phone) { toast.error('No phone number on file for this patient'); return }
+
+    // Ensure the preview section is open so the DOM node is mounted
+    if (!showPreview) {
+      setShowPreview(true)
+      await new Promise<void>((resolve) => setTimeout(resolve, 150))
+    }
+
+    const previewEl = previewContentRef.current
+    if (!previewEl) {
+      toast.error('Preview is not available — please expand the preview section and try again.')
+      return
+    }
+
     setWaPending(true)
     try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        toast.error('Session expired. Please sign in again.')
+        return
+      }
+
       const [saveResult, dtData] = await Promise.all([performSave(), fetchDietitianData()])
       if (saveResult.error) { toast.error(saveResult.error); return }
+
+      const { blob: pdfBlob, filename: baseFilename } = await generateDocumentAsPDFBlob({
+        docTitle,
+        dietitian: dtData,
+        previewElement: previewEl,
+      })
+
+      if (pdfBlob.size > WHATSAPP_MAX_UPLOAD_BYTES) {
+        const currentMB = (pdfBlob.size / (1024 * 1024)).toFixed(1)
+        toast.error(`Generated PDF is too large (${currentMB} MB). Please shorten the document and try again.`)
+        return
+      }
+
+      const fileName = `${baseFilename}.pdf`
+      const objectPath = `${user.id}/${patient.id}/${Date.now()}_${fileName}`
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(objectPath, pdfBlob, {
+          contentType: 'application/pdf',
+          upsert: false,
+        })
+
+      if (uploadError) {
+        console.error('[WhatsApp] document upload failed:', {
+          message: uploadError.message,
+          name: uploadError.name,
+          objectPath,
+        })
+        const reason = uploadError.message?.trim()
+          ? ` (${uploadError.message})`
+          : ''
+        toast.error(`Document upload failed. Please try again.${reason}`)
+        return
+      }
+
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+        .from('documents')
+        .createSignedUrl(objectPath, WHATSAPP_LINK_EXPIRY_SECONDS)
+
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        toast.error('Unable to generate secure document link. Please try again.')
+        return
+      }
+
+      const { data: documentRow, error: documentInsertError } = await supabase
+        .from('documents')
+        .insert({
+          dietitian_id: user.id,
+          patient_id: patient.id,
+          file_url: objectPath,
+          file_name: fileName,
+          file_type: 'application/pdf',
+          file_size_bytes: pdfBlob.size,
+        })
+        .select('id')
+        .single()
+
+      if (documentInsertError) {
+        toast.error('Document metadata could not be saved. Please try again.')
+        return
+      }
+
+      const { error: timelineError } = await supabase.from('timeline_events').insert({
+        dietitian_id: user.id,
+        patient_id: patient.id,
+        event_type: 'clinical_document_created',
+        event_data: {
+          title: docTitle.trim(),
+          file_name: fileName,
+          delivery_channel: 'whatsapp',
+          storage_bucket: 'documents',
+          storage_path: objectPath,
+          link_expires_in_days: 7,
+          note: 'Clinical document sent via WhatsApp',
+        } as unknown as Json,
+        reference_id: documentRow.id,
+      })
+
+      if (timelineError) {
+        console.error('[WhatsApp] timeline insert failed:', timelineError)
+      }
 
       const phone = patient.phone.replace(/\D/g, '')
       const clinicDisplay = dtData.clinicName || 'our clinic'
       const message =
-        `Hello ${patient.full_name},\n\nYour diet plan from ${clinicDisplay} is ready.\n\nGenerated by ${dtData.name}`
+        `Hello ${patient.full_name},\n\nYour diet plan from ${clinicDisplay} is ready.\n\nDownload it securely here: ${signedUrlData.signedUrl}\n\nThis link expires in 7 days.\n\nGenerated by ${dtData.name}`
       window.open(
         `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
         '_blank',
         'noopener,noreferrer'
       )
-      toast.success('Document saved. WhatsApp opened.')
-      router.push('/clinical-notes')
+      clearDraft()
+      toast.success('Document saved, uploaded, and WhatsApp opened.')
+      router.push(`/patients/${patient.id}`)
       router.refresh()
-    } catch {
-      toast.error('Failed to share via WhatsApp')
+    } catch (err) {
+      console.error('[WhatsApp] share flow failed:', err)
+      toast.error('Failed to share via WhatsApp. Please try again.')
     } finally {
       setWaPending(false)
     }
@@ -693,7 +921,7 @@ export function DocumentComposer({
         .eq('id', patient.id)
         .eq('dietitian_id', user.id)
 
-      if (error) { toast.error('Failed to save: ' + error.message); return }
+      if (error) { toast.error('Failed to save measurements. Please try again.'); return }
 
       // Timeline event for weight change
       if (updates.weight_kg !== undefined) {
@@ -716,9 +944,9 @@ export function DocumentComposer({
 
       // Reflect updates in local patient state so BMI/IBW/snapshot recalculate
       setPatient((prev) => prev ? { ...prev, ...updates } : prev)
-      toast.success('Measurements saved to patient profile')
+      toast.success('Measurements saved')
     } catch {
-      toast.error('Failed to save measurements')
+      toast.error('Failed to save measurements. Please try again.')
     } finally {
       setIsSavingMeasurements(false)
     }
@@ -730,9 +958,9 @@ export function DocumentComposer({
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     const [d, p, pr] = await Promise.all([
-      supabase.from('dietitians').select('full_name, phone').eq('id', user!.id).single(),
+      supabase.from('dietitians').select('full_name, phone, email').eq('id', user!.id).single(),
       supabase.from('dietitian_professional').select('primary_qualification, registration_number').eq('dietitian_id', user!.id).single(),
-      supabase.from('dietitian_practice').select('clinic_name, practice_address, city, state').eq('dietitian_id', user!.id).single(),
+      supabase.from('dietitian_practice').select('clinic_name, practice_address, city, state, logo_url').eq('dietitian_id', user!.id).single(),
     ])
     const addressParts = [pr.data?.practice_address, pr.data?.city, pr.data?.state].filter(Boolean)
     const data: DietitianPDFData = {
@@ -742,6 +970,8 @@ export function DocumentComposer({
       clinicName: pr.data?.clinic_name ?? '',
       address: addressParts.join(', '),
       phone: d.data?.phone ?? '',
+      email: d.data?.email ?? user?.email ?? '',
+      logoUrl: pr.data?.logo_url ?? '',
     }
     setDietitianPDFData(data)
     return data
@@ -750,9 +980,7 @@ export function DocumentComposer({
   // ── Shared: build the save payload (used by all three save actions) ─
   const buildSavePayload = () => {
     if (!patient || !docTitle.trim()) return null
-    const contentBlocks = blocks.map((b) =>
-      b.type === 'title' ? { ...b, content: docTitle } : b
-    )
+    const contentBlocks = sanitizeContentBlocks(blocks)
     const vH = visitHeight && !isNaN(parseFloat(visitHeight)) ? parseFloat(visitHeight) : undefined
     const vW = visitWeight && !isNaN(parseFloat(visitWeight)) ? parseFloat(visitWeight) : undefined
     const snapshotBlock = buildPatientSnapshotBlock(patient, {
@@ -764,7 +992,7 @@ export function DocumentComposer({
       patient_id: patient.id,
       document_type: docType,
       title: docTitle.trim(),
-      blocks: [snapshotBlock, ...contentBlocks],
+      blocks: includePatientInfo ? [snapshotBlock, ...contentBlocks] : contentBlocks,
     }
   }
 
@@ -793,8 +1021,9 @@ export function DocumentComposer({
         toast.error(result.error)
         return
       }
-      toast.success(isEditMode ? 'Document updated' : 'Document saved')
-      router.push('/clinical-notes')
+      clearDraft()
+      toast.success(isEditMode ? 'Document updated successfully' : 'Document saved successfully')
+      router.push(`/patients/${patient.id}`)
       router.refresh()
     })
   }
@@ -808,7 +1037,7 @@ export function DocumentComposer({
       (b) => {
         const safe = b.content ? stripMarkdown(b.content) : ''
         const display = safe || '<span class="text-muted-foreground italic">Empty</span>'
-        return `<h3 class="font-semibold text-sm mt-4 mb-1">${b.label}</h3><p class="text-sm whitespace-pre-wrap">${display}</p>`
+        return `<div class="pdf-section" data-pdf-block="section"><h3 class="font-semibold text-sm mt-4 mb-1">${b.label}</h3><p class="text-sm whitespace-pre-wrap">${display}</p></div>`
       }
     )
     .join('')
@@ -825,7 +1054,7 @@ export function DocumentComposer({
     : null
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-5 max-w-4xl">
       {/* ══════════════ Section 1: Document Type ══════════════ */}
       <Card>
         <CardHeader className="pb-3">
@@ -863,7 +1092,7 @@ export function DocumentComposer({
                   {localTemplates.length > 0 && (
                     <>
                       <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1 pt-2">
-                        Saved Templates
+                        Custom Templates
                       </div>
                       {localTemplates
                         .slice()
@@ -892,124 +1121,86 @@ export function DocumentComposer({
             </div>
           </div>
 
-          {/* Saved Templates management — only shown when templates exist */}
-          {localTemplates.length > 0 && (
-            <div className="space-y-1.5 pt-1">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Saved Templates</p>
-              <div className="flex flex-col gap-1">
-                {localTemplates
-                  .slice()
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map((t) => (
-                    <div
-                      key={t.id}
-                      className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm bg-muted/40"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleLoadTemplate(t.id)}
-                        className="flex-1 text-left truncate hover:text-foreground text-muted-foreground transition-colors"
-                      >
-                        {t.name}
-                        <span className="ml-2 text-xs opacity-60">
-                          ({DOC_TYPE_LABELS[t.docType] ?? t.docType})
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteTemplate(t.id)}
-                        className="shrink-0 rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                        title="Delete template"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
-              </div>
+          <div className="flex items-start gap-2.5 rounded-md border bg-muted/20 p-3">
+            <Checkbox
+              id="include-patient-info"
+              checked={includePatientInfo}
+              onCheckedChange={(checked) => setIncludePatientInfo(checked === true)}
+              className="mt-0.5"
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="include-patient-info" className="cursor-pointer">
+                Include Patient Information in document print/PDF
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Enabled by default. Uncheck for quick notes or custom documents where patient details are not needed.
+              </p>
             </div>
-          )}
+          </div>
+
         </CardContent>
       </Card>
 
       {/* ══════════════ Section 2: Patient Context ══════════════ */}
       {patient && (
-        <Card>
-          <CardContent className="py-4">
-            <button
-              type="button"
-              className="flex w-full items-center gap-3 text-left"
-              onClick={() => setPatientExpanded((v) => !v)}
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
-                <User className="h-5 w-5" />
+        <CollapsibleSection
+          title={patient.full_name}
+          subtitle={`${patient.patient_code} · ${patient.phone}`}
+          icon={
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+              <User className="h-5 w-5" />
+            </div>
+          }
+          className="clay-card"
+        >
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {[
+              { label: 'Age', value: computeAge(patient.date_of_birth) },
+              { label: 'Gender', value: patient.gender ?? 'N/A' },
+              {
+                label: 'Height',
+                value: patient.height_cm ? `${patient.height_cm} cm` : 'N/A',
+              },
+              {
+                label: 'Weight',
+                value: patient.weight_kg ? `${patient.weight_kg} kg` : 'N/A',
+              },
+              { label: 'Primary Goal', value: patient.primary_goal ?? 'N/A' },
+              {
+                label: 'Activity Level',
+                value: patient.activity_level?.replace(/_/g, ' ') ?? 'N/A',
+              },
+              { label: 'Dietary Type', value: patient.dietary_type ?? 'N/A' },
+              {
+                label: 'Medical Conditions',
+                value: patient.medical_conditions?.join(', ') || 'None',
+              },
+              {
+                label: 'Food Allergies',
+                value: patient.food_allergies?.join(', ') || 'None',
+              },
+            ].map((item) => (
+              <div key={item.label}>
+                <p className="text-xs text-muted-foreground">{item.label}</p>
+                <p className="text-sm font-medium capitalize">{item.value}</p>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">{patient.full_name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {patient.patient_code} · {patient.phone}
-                </p>
-              </div>
-              <Badge variant="secondary" className="text-xs mr-2">
-                Patient Context
-              </Badge>
-              {patientExpanded ? (
-                <ChevronUp className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              )}
-            </button>
-
-            {patientExpanded && (
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 pt-3 border-t">
-                {[
-                  { label: 'Age', value: computeAge(patient.date_of_birth) },
-                  { label: 'Gender', value: patient.gender ?? 'N/A' },
-                  {
-                    label: 'Height',
-                    value: patient.height_cm ? `${patient.height_cm} cm` : 'N/A',
-                  },
-                  {
-                    label: 'Weight',
-                    value: patient.weight_kg ? `${patient.weight_kg} kg` : 'N/A',
-                  },
-                  { label: 'Primary Goal', value: patient.primary_goal ?? 'N/A' },
-                  {
-                    label: 'Activity Level',
-                    value: patient.activity_level?.replace(/_/g, ' ') ?? 'N/A',
-                  },
-                  { label: 'Dietary Type', value: patient.dietary_type ?? 'N/A' },
-                  {
-                    label: 'Medical Conditions',
-                    value: patient.medical_conditions?.join(', ') || 'None',
-                  },
-                  {
-                    label: 'Food Allergies',
-                    value: patient.food_allergies?.join(', ') || 'None',
-                  },
-                ].map((item) => (
-                  <div key={item.label}>
-                    <p className="text-xs text-muted-foreground">{item.label}</p>
-                    <p className="text-sm font-medium capitalize">{item.value}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            ))}
+          </div>
+        </CollapsibleSection>
       )}
 
       {/* ══════════════ Section 2b: Visit Measurements ══════════════ */}
       {patient && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Ruler className="h-4 w-4 text-emerald-600" />
-              Visit Measurements
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <CollapsibleSection
+          title="Visit Measurements"
+          subtitle="Record today's anthropometry and save timeline updates"
+          icon={<Ruler className="h-4 w-4 text-primary" />}
+          className="clay-card"
+          defaultOpen={false}
+          contentClassName="space-y-4"
+        >
             <p className="text-xs text-muted-foreground">
-              Record today's measurements. Click <strong>Save Measurements</strong> to update the patient profile and log the weight change to the timeline.
+              Record today&apos;s measurements. Click <strong>Save Measurements</strong> to update the patient profile and log the weight change to the timeline.
             </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
@@ -1033,7 +1224,7 @@ export function DocumentComposer({
                     Math.abs(parseFloat(visitWeight) - (patient.weight_kg ?? 0)) > 0.01 && (
                     <span className={cn(
                       'text-xs font-medium',
-                      parseFloat(visitWeight) < (patient.weight_kg ?? 0) ? 'text-emerald-600' : 'text-amber-600'
+                      parseFloat(visitWeight) < (patient.weight_kg ?? 0) ? 'text-primary' : 'text-amber-600'
                     )}>
                       {parseFloat(visitWeight) < (patient.weight_kg ?? 0) ? '▼' : '▲'}{' '}
                       {Math.abs(parseFloat(visitWeight) - (patient.weight_kg ?? 0)).toFixed(1)} kg
@@ -1078,7 +1269,7 @@ export function DocumentComposer({
                   <span>
                     Change from last visit:{' '}
                     <strong className={cn(
-                      parseFloat(visitWeight) < originalWeight ? 'text-emerald-600' : 'text-amber-600'
+                      parseFloat(visitWeight) < originalWeight ? 'text-primary' : 'text-amber-600'
                     )}>
                       {parseFloat(visitWeight) === originalWeight
                         ? 'No change'
@@ -1100,39 +1291,38 @@ export function DocumentComposer({
               {isSavingMeasurements ? (
                 <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</>
               ) : (
-                <><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Save Measurements</>
+                <><CheckCircle2 className="h-3.5 w-3.5 text-primary" /> Save Measurements</>
               )}
             </Button>
-          </CardContent>
-        </Card>
+        </CollapsibleSection>
       )}
 
       {/* ══════════════ Section 3: Structured Document Editor ══════════════ */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Document Content</CardTitle>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={addBlock}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add Section
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <CollapsibleSection
+        title="Document Content"
+        subtitle="Build and reorder sections for this document"
+        count={blocks.length}
+        className="clay-card"
+        defaultOpen
+        contentClassName="space-y-2.5"
+      >
+        <div className="mb-2.5 flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={addBlock}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add Section
+          </Button>
+        </div>
           {blocks.map((block, idx) => {
-            // For Custom Document type, hide the internal title block entirely —
-            // the title is already captured in the top-level Title field.
-            if (docType === 'custom' && block.type === 'title') return null
             return (
             <div
               key={block.id}
-              className="group rounded-lg border bg-background p-4 space-y-2"
+              className="group rounded-lg border bg-background px-3 py-2.5 space-y-1.5"
             >
               <div className="flex items-center gap-2">
                 <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
@@ -1177,30 +1367,27 @@ export function DocumentComposer({
                 value={block.content}
                 onChange={(e) => updateBlockContent(block.id, e.target.value)}
                 placeholder={
-                  block.type === 'title'
-                    ? 'Enter document title…'
-                    : block.type === 'instructions'
+                    block.type === 'instructions'
                       ? 'e.g. Drink 3L water daily, avoid refined sugar…'
                       : `Enter ${block.label.toLowerCase()} details…`
                 }
-                rows={block.type === 'title' ? 1 : 4}
+                  rows={4}
                 className="resize-none"
               />
             </div>
           )
         })}
-        </CardContent>
-      </Card>
+      </CollapsibleSection>
 
       {/* ══════════════ Section 4: AI Assistance ══════════════ */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-violet-500" />
-            AI Assistance
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <CollapsibleSection
+        title="AI Assistance"
+        subtitle="Enhance, simplify, or suggest plan content"
+        icon={<Sparkles className="h-4 w-4 text-primary" />}
+        className="clay-card"
+        defaultOpen={false}
+        contentClassName="space-y-3"
+      >
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -1213,9 +1400,9 @@ export function DocumentComposer({
               {aiLoading === 'enhance' ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
               )}
-              Enhance with AI
+              {aiLoading === 'enhance' ? 'Enhancing…' : 'Enhance with AI'}
             </Button>
             <Button
               type="button"
@@ -1230,7 +1417,7 @@ export function DocumentComposer({
               ) : (
                 <Heart className="h-3.5 w-3.5 text-pink-500" />
               )}
-              Format for Patient
+              {aiLoading === 'patient_friendly' ? 'Formatting…' : 'Format for Patient'}
             </Button>
             <Button
               type="button"
@@ -1245,9 +1432,43 @@ export function DocumentComposer({
               ) : (
                 <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
               )}
-              AI Suggestions
+              {aiLoading === 'suggest' ? 'Generating…' : 'AI Suggestions'}
             </Button>
           </div>
+
+          {/* AI fallback warning */}
+          {aiMeta?.isFallback === true && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-amber-800">
+                  AI could not fully process this. Showing limited or fallback results.
+                </p>
+                {aiMeta.reason && ['timeout', 'parse_failed', 'invalid_structure'].includes(aiMeta.reason) && (
+                  <p className="text-xs text-amber-700 mt-0.5 capitalize">
+                    Reason: {aiMeta.reason.replace(/_/g, ' ')}
+                  </p>
+                )}
+              </div>
+              {lastAiAction && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5"
+                  onClick={() => callAI(lastAiAction)}
+                  disabled={aiLoading !== null}
+                >
+                  {aiLoading !== null ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  )}
+                  Retry AI
+                </Button>
+              )}
+            </div>
+          )}
 
           {aiSuggestions && (
             <div className="rounded-lg border bg-amber-50 p-4 text-sm">
@@ -1270,12 +1491,12 @@ export function DocumentComposer({
 
           {/* AI enhancement pending — Apply or Discard */}
           {(aiEnhancedBlocks || aiRawResult) && (
-            <div className="rounded-lg border border-violet-200 bg-violet-50 p-4 space-y-3">
+            <div className="rounded-lg border border-primary/30 bg-primary/10 p-4 space-y-3">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-violet-600" />
-                <p className="text-sm font-medium text-violet-800">AI enhancement ready</p>
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <p className="text-sm font-medium text-primary">AI enhancement ready</p>
               </div>
-              <p className="text-xs text-violet-700">
+              <p className="text-xs text-primary/85">
                 Your original content is unchanged. Review the preview below, then decide.
               </p>
               <div className="flex items-center gap-2">
@@ -1284,7 +1505,7 @@ export function DocumentComposer({
                     type="button"
                     size="sm"
                     onClick={handleApplyAIChanges}
-                    className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     Apply AI Changes
@@ -1303,8 +1524,7 @@ export function DocumentComposer({
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+      </CollapsibleSection>
 
       {/* ══════════════ Section 5: Document Preview ══════════════ */}
       <Card>
@@ -1327,12 +1547,12 @@ export function DocumentComposer({
         </CardHeader>
         {showPreview && (
           <CardContent>
-            <div ref={previewContentRef} className="rounded-lg border bg-white p-6 space-y-4">
+            <div ref={previewContentRef} className="clay-card p-6 space-y-4">
               {/* AI indicator banner */}
               {(aiEnhancedBlocks || aiRawResult) && (
-                <div className="flex items-center gap-2 rounded-md bg-violet-50 border border-violet-200 px-3 py-2">
-                  <Sparkles className="h-3.5 w-3.5 text-violet-600 shrink-0" />
-                  <span className="text-xs font-medium text-violet-700">
+                <div className="flex items-center gap-2 rounded-md bg-primary/10 border border-primary/30 px-3 py-2">
+                  <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span className="text-xs font-medium text-primary/90">
                     {aiRawResult
                       ? 'AI output (unstructured) — editor unchanged'
                       : 'AI Enhanced Preview — your editor content is unchanged'}
@@ -1346,9 +1566,9 @@ export function DocumentComposer({
               </h2>
 
               {/* Patient snapshot header */}
-              {liveSnapshotData && (
-                <div className="rounded-md border bg-slate-50 p-4 space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Patient Information</p>
+              {includePatientInfo && liveSnapshotData && (
+                <div className="rounded-md border bg-slate-50 p-4 space-y-3" data-pdf-block="section">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-800">Patient Information</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5">
                     {[
                       { label: 'Name', value: liveSnapshotData.name },
@@ -1367,8 +1587,8 @@ export function DocumentComposer({
                       { label: 'Food Allergies', value: liveSnapshotData.foodAllergies },
                     ].map((item) => (
                       <div key={item.label}>
-                        <p className="text-xs text-muted-foreground">{item.label}</p>
-                        <p className="text-xs font-medium capitalize">{item.value}</p>
+                        <p className="text-xs font-bold text-slate-700">{item.label}</p>
+                        <p className="text-xs font-normal capitalize mt-0.5">{item.value}</p>
                       </div>
                     ))}
                   </div>
@@ -1377,7 +1597,7 @@ export function DocumentComposer({
 
               {/* Unstructured AI output (raw fallback) */}
               {aiRawResult && (
-                <div className="rounded-md border bg-violet-50 p-4 text-sm text-violet-900 whitespace-pre-wrap">
+                <div className="rounded-md border border-secondary/40 bg-secondary/20 p-4 text-sm text-secondary-foreground whitespace-pre-wrap" data-pdf-block="section">
                   {aiRawResult}
                 </div>
               )}
@@ -1398,7 +1618,7 @@ export function DocumentComposer({
           type="button"
           disabled={isPending || pdfPending || waPending || !patient}
           onClick={handleSave}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 rounded-full px-5"
         >
           {isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -1407,16 +1627,18 @@ export function DocumentComposer({
           )}
           {isEditMode ? 'Update Document' : 'Save Document'}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={isPending || pdfPending || waPending}
-          onClick={handleSaveTemplate}
-          className="gap-2"
-        >
-          <BookmarkPlus className="h-4 w-4" />
-          Save as Template
-        </Button>
+        {docType === 'custom' && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isPending || pdfPending || waPending}
+            onClick={handleSaveTemplate}
+            className="gap-2"
+          >
+            <BookmarkPlus className="h-4 w-4" />
+            Save as Template
+          </Button>
+        )}
         <Button
           type="button"
           variant="outline"

@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   ArrowLeft,
   Activity,
@@ -18,6 +19,7 @@ import {
   User,
   Clock,
   Upload,
+  RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -43,6 +45,40 @@ interface Metric {
 interface Observation {
   type: 'concern' | 'improvement' | 'note'
   text: string
+}
+
+function parseStoredAiObservations(
+  value: unknown
+): { metrics: Metric[]; observations: Observation[] } {
+  if (!value || typeof value !== 'object') {
+    return { metrics: [], observations: [] }
+  }
+
+  const asObject = value as {
+    metrics?: Metric[]
+    observations?: Observation[]
+  }
+
+  if (Array.isArray(asObject.metrics) || Array.isArray(asObject.observations)) {
+    return {
+      metrics: Array.isArray(asObject.metrics) ? asObject.metrics : [],
+      observations: Array.isArray(asObject.observations) ? asObject.observations : [],
+    }
+  }
+
+  // Backward compatibility: legacy array-wrapped shape [{ metrics, observations }]
+  if (Array.isArray(value) && value.length > 0) {
+    const first = value[0] as {
+      metrics?: Metric[]
+      observations?: Observation[]
+    }
+    return {
+      metrics: Array.isArray(first?.metrics) ? first.metrics : [],
+      observations: Array.isArray(first?.observations) ? first.observations : [],
+    }
+  }
+
+  return { metrics: [], observations: [] }
 }
 
 const REPORT_TYPE_LABELS: Record<string, string> = {
@@ -79,25 +115,14 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [aiLoading, setAiLoading] = useState(false)
+  const [aiMeta, setAiMeta] = useState<{ isFallback: boolean; reason?: string } | null>(null)
 
   // Parse existing AI data
   const [aiSummary, setAiSummary] = useState<string>(report.ai_summary ?? '')
   const [aiObservations, setAiObservations] = useState<{
     metrics: Metric[]
     observations: Observation[]
-  }>(() => {
-    if (report.ai_observations && typeof report.ai_observations === 'object') {
-      const obs = report.ai_observations as unknown as {
-        metrics?: Metric[]
-        observations?: Observation[]
-      }
-      return {
-        metrics: obs.metrics ?? [],
-        observations: obs.observations ?? [],
-      }
-    }
-    return { metrics: [], observations: [] }
-  })
+  }>(() => parseStoredAiObservations(report.ai_observations))
 
   const handleAnalyze = async () => {
     if (report.file_urls.length === 0) {
@@ -106,6 +131,7 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
     }
 
     setAiLoading(true)
+    setAiMeta(null)
     try {
       const res = await fetch('/api/ai/analyze-lab-report', {
         method: 'POST',
@@ -113,7 +139,7 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
         body: JSON.stringify({
           reportId: report.id,
           fileUrls: report.file_urls,
-          reportType: report.report_type,
+          ...(report.report_type ? { reportType: report.report_type } : {}),
         }),
       })
 
@@ -122,6 +148,7 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
         metrics?: Metric[]
         observations?: Observation[]
         error?: string
+        _meta?: { isFallback: boolean; reason?: string }
       }
 
       if (!res.ok || data.error) {
@@ -129,6 +156,7 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
         return
       }
 
+      setAiMeta(data._meta ?? null)
       setAiSummary(data.summary ?? '')
       setAiObservations({
         metrics: data.metrics ?? [],
@@ -136,9 +164,10 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
       })
 
       // Save to DB
-      await saveAiAnalysis(report.id, data.summary ?? '', [
-        { metrics: data.metrics ?? [], observations: data.observations ?? [] },
-      ])
+      await saveAiAnalysis(report.id, data.summary ?? '', {
+        metrics: data.metrics ?? [],
+        observations: data.observations ?? [],
+      })
       toast.success('AI analysis complete')
     } catch {
       toast.error('Failed to analyze report')
@@ -155,7 +184,7 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
         toast.error(result.error)
       } else {
         toast.success('Report deleted')
-        router.push('/lab-reports')
+        router.push(`/patients/${report.patient_id}/lab-reports`)
       }
     })
   }
@@ -165,11 +194,11 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
       {/* Back + header */}
       <div className="flex items-center gap-3">
         <Link
-          href="/lab-reports"
+          href={`/patients/${report.patient_id}/lab-reports`}
           className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5')}
         >
           <ArrowLeft className="h-4 w-4" />
-          Back
+          Back to Patient
         </Link>
       </div>
 
@@ -244,9 +273,12 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
                 return (
                   <div key={idx} className="rounded-lg border overflow-hidden">
                     {isImage && (
-                      <img
+                      <Image
                         src={url}
                         alt={`Report file ${idx + 1}`}
+                        width={960}
+                        height={720}
+                        unoptimized
                         className="w-full h-48 object-contain bg-muted"
                       />
                     )}
@@ -319,6 +351,37 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
 
           {aiSummary && (
             <>
+              {/* AI fallback warning */}
+              {aiMeta?.isFallback === true && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-amber-800">
+                      AI could not fully process this. Showing limited or fallback results.
+                    </p>
+                    {aiMeta.reason && ['timeout', 'parse_failed', 'invalid_structure'].includes(aiMeta.reason) && (
+                      <p className="text-xs text-amber-700 mt-0.5 capitalize">
+                        Reason: {aiMeta.reason.replace(/_/g, ' ')}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 gap-1.5"
+                    onClick={handleAnalyze}
+                    disabled={aiLoading}
+                  >
+                    {aiLoading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    )}
+                    Retry AI
+                  </Button>
+                </div>
+              )}
+
               {/* Summary */}
               <div className="rounded-lg bg-violet-50 border border-violet-200 p-4">
                 <h3 className="text-sm font-semibold text-violet-800 mb-1">Summary</h3>

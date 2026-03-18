@@ -38,19 +38,19 @@ export default function ForgotPasswordPage() {
       {/* Logo */}
       <div className="text-center">
         <div className="flex items-center justify-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600">
+          <div className="flex h-9 w-9 items-center justify-center rounded-2xl clay-button-primary">
             <Leaf className="h-5 w-5 text-white" />
           </div>
-          <span className="text-2xl font-semibold tracking-tight">peepal</span>
+          <span className="text-2xl font-semibold tracking-tight">Zero</span>
         </div>
       </div>
 
-      <div className="rounded-2xl border bg-card p-6 shadow-sm">
+      <div className="clay-card p-6">
         {sent ? (
           <div className="space-y-4 text-center py-2">
             <div className="flex justify-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
-                <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/15">
+                <CheckCircle2 className="h-7 w-7 text-primary" />
               </div>
             </div>
             <div>
@@ -68,7 +68,7 @@ export default function ForgotPasswordPage() {
             </Link>
           </div>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
             <div className="space-y-1">
               <h1 className="text-xl font-semibold">Reset your password</h1>
               <p className="text-sm text-muted-foreground">
@@ -89,6 +89,7 @@ export default function ForgotPasswordPage() {
                 type="email"
                 placeholder="Enter your email"
                 autoComplete="email"
+                className="h-9 rounded-xl"
                 {...register('email')}
               />
               {errors.email && (
@@ -96,7 +97,7 @@ export default function ForgotPasswordPage() {
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={isPending}>
+            <Button type="submit" className="w-full h-9 rounded-full" disabled={isPending}>
               {isPending ? 'Sending link…' : 'Send Reset Link'}
             </Button>
 

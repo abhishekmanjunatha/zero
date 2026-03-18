@@ -16,17 +16,19 @@ export default async function AppointmentsPage({ searchParams }: AppointmentsPag
     ? (filter as 'today' | 'upcoming' | 'completed')
     : 'today'
 
-  const appointments = await getAppointments(activeFilter)
+  const { data: appointmentData, error: fetchError } = await getAppointments(activeFilter)
 
   return (
     <div className="space-y-6 max-w-5xl">
       <div>
         <h1 className="text-xl font-semibold">Appointments</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {appointments.length} appointment{appointments.length !== 1 ? 's' : ''}
-        </p>
+        {!fetchError && (
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {appointmentData.length} appointment{appointmentData.length !== 1 ? 's' : ''}
+          </p>
+        )}
       </div>
-      <AppointmentsList appointments={appointments} activeFilter={activeFilter} />
+      <AppointmentsList appointments={appointmentData} activeFilter={activeFilter} fetchError={fetchError} />
     </div>
   )
 }

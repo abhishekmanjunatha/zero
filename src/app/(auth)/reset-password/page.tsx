@@ -25,11 +25,11 @@ function PasswordStrengthHints({ password }: { password: string }) {
       {checks.map((c) => (
         <div key={c.label} className="flex items-center gap-1.5 text-xs">
           {c.ok ? (
-            <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+            <CheckCircle2 className="h-3 w-3 text-primary shrink-0" />
           ) : (
             <Circle className="h-3 w-3 text-muted-foreground shrink-0" />
           )}
-          <span className={c.ok ? 'text-emerald-600' : 'text-muted-foreground'}>{c.label}</span>
+          <span className={c.ok ? 'text-primary' : 'text-muted-foreground'}>{c.label}</span>
         </div>
       ))}
     </div>
@@ -49,6 +49,7 @@ export default function ResetPasswordPage() {
     formState: { errors },
   } = useForm<ResetPasswordInput>({ resolver: zodResolver(resetPasswordSchema) })
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const passwordValue = watch('password', '')
 
   const onSubmit = (data: ResetPasswordInput) => {
@@ -68,15 +69,15 @@ export default function ResetPasswordPage() {
       {/* Logo */}
       <div className="text-center">
         <div className="flex items-center justify-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600">
+          <div className="flex h-9 w-9 items-center justify-center rounded-2xl clay-button-primary">
             <Leaf className="h-5 w-5 text-white" />
           </div>
-          <span className="text-2xl font-semibold tracking-tight">peepal</span>
+          <span className="text-2xl font-semibold tracking-tight">Zero</span>
         </div>
       </div>
 
-      <div className="rounded-2xl border bg-card p-6 shadow-sm">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div className="clay-card p-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
           <div className="space-y-1">
             <h1 className="text-xl font-semibold">Set a new password</h1>
             <p className="text-sm text-muted-foreground">
@@ -98,7 +99,7 @@ export default function ResetPasswordPage() {
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Create new password"
                 autoComplete="new-password"
-                className="pr-10"
+                className="h-9 rounded-xl pr-10"
                 {...register('password')}
               />
               <button
@@ -124,7 +125,7 @@ export default function ResetPasswordPage() {
                 type={showConfirm ? 'text' : 'password'}
                 placeholder="Confirm new password"
                 autoComplete="new-password"
-                className="pr-10"
+                className="h-9 rounded-xl pr-10"
                 {...register('confirmPassword')}
               />
               <button
@@ -141,7 +142,7 @@ export default function ResetPasswordPage() {
             )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={isPending}>
+          <Button type="submit" className="w-full h-9 rounded-full" disabled={isPending}>
             {isPending ? 'Updating password…' : 'Update Password'}
           </Button>
         </form>

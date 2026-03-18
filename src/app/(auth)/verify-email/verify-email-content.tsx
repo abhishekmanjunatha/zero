@@ -62,24 +62,24 @@ export function VerifyEmailContent({ email }: { email?: string }) {
       {/* Logo */}
       <div className="text-center">
         <div className="flex items-center justify-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600">
+          <div className="flex h-9 w-9 items-center justify-center rounded-2xl clay-button-primary">
             <Leaf className="h-5 w-5 text-white" />
           </div>
-          <span className="text-2xl font-semibold tracking-tight">peepal</span>
+          <span className="text-2xl font-semibold tracking-tight">Zero</span>
         </div>
       </div>
 
-      <div className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
+      <div className="clay-card p-6 space-y-4">
         {/* Icon + Title */}
         <div className="text-center space-y-3">
           <div className="flex justify-center">
             {isVerified ? (
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
-                <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/15">
+                <CheckCircle2 className="h-7 w-7 text-primary" />
               </div>
             ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50">
-                <Mail className="h-7 w-7 text-blue-500" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary/30">
+                <Mail className="h-7 w-7 text-secondary-foreground" />
               </div>
             )}
           </div>
@@ -102,7 +102,7 @@ export function VerifyEmailContent({ email }: { email?: string }) {
         <div
           className={`flex items-center gap-2.5 rounded-lg px-4 py-3 text-sm ${
             isVerified
-              ? 'bg-emerald-50 text-emerald-700'
+              ? 'bg-primary/15 text-primary'
               : 'bg-muted text-muted-foreground'
           }`}
         >
@@ -116,7 +116,7 @@ export function VerifyEmailContent({ email }: { email?: string }) {
 
         {/* Continue */}
         <Button
-          className="w-full"
+          className="w-full h-9 rounded-full"
           disabled={!isVerified || isContinuing}
           onClick={handleContinue}
         >
@@ -135,6 +135,7 @@ export function VerifyEmailContent({ email }: { email?: string }) {
           <Button
             variant="ghost"
             size="sm"
+            className="h-8 rounded-full"
             onClick={handleResend}
             disabled={cooldown > 0 || isResending || !email}
           >

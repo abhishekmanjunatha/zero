@@ -44,6 +44,7 @@ export const practiceSchema = z.object({
     message: 'Select a practice type',
   }),
   clinic_name: z.string().optional(),
+  logo_url: z.string().optional(),
   practice_address: z.string().optional(),
   city: z.string().min(1, 'City is required'),
   state: z.string().min(1, 'State is required'),

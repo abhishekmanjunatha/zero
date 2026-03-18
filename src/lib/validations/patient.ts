@@ -4,7 +4,13 @@ export const createPatientSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
   phone: z.string().min(7, 'Enter a valid phone number'),
   gender: z.enum(['male', 'female', 'other']).optional(),
-  date_of_birth: z.string().optional(),
+  date_of_birth: z
+    .string()
+    .optional()
+    .refine(
+      (v) => !v || new Date(v) <= new Date(),
+      'Date of birth cannot be in the future'
+    ),
   height_cm: z.number().positive().optional(),
   weight_kg: z.number().positive().optional(),
   activity_level: z.enum(['sedentary', 'lightly_active', 'highly_active']).optional(),

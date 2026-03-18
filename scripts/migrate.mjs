@@ -6,6 +6,7 @@
 //   DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.twoesyyxaypygyajhdtd.supabase.co:5432/postgres
 
 import { readFileSync } from 'fs'
+import { readdirSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import pg from 'pg'
@@ -43,8 +44,13 @@ if (!DATABASE_URL) {
   process.exit(1)
 }
 
-const MIGRATION_FILE = join(ROOT, 'supabase', 'migrations', '00001_initial_schema.sql')
-const sql = readFileSync(MIGRATION_FILE, 'utf-8')
+const MIGRATIONS_DIR = join(ROOT, 'supabase', 'migrations')
+
+function getMigrationFiles() {
+  return readdirSync(MIGRATIONS_DIR)
+    .filter((name) => name.endsWith('.sql'))
+    .sort((a, b) => a.localeCompare(b))
+}
 
 const client = new Client({
   connectionString: DATABASE_URL,
@@ -53,7 +59,7 @@ const client = new Client({
 
 console.log('\n📦 Peepal Migration Runner')
 console.log('──────────────────────────')
-console.log(`Applying: supabase/migrations/00001_initial_schema.sql`)
+console.log(`Applying: all files in supabase/migrations/*.sql`)
 console.log(`Target:   db.twoesyyxaypygyajhdtd.supabase.co\n`)
 
 /**
@@ -125,33 +131,48 @@ try {
   await client.connect()
   console.log('✅ Connected to database')
 
-  const statements = splitSQL(sql).filter(s => s.length > 5)
-  console.log(`   Found ${statements.length} statements to execute\n`)
+  const migrationFiles = getMigrationFiles()
+  if (migrationFiles.length === 0) {
+    console.log('ℹ️  No migration files found.')
+    process.exit(0)
+  }
+
+  console.log(`   Found ${migrationFiles.length} migration file(s):`)
+  migrationFiles.forEach((f) => console.log(`   - ${f}`))
+  console.log('')
 
   let ok = 0
   let skipped = 0
   let failed = 0
 
-  for (let idx = 0; idx < statements.length; idx++) {
-    const stmt = statements[idx]
-    const preview = stmt.slice(0, 72).replace(/\s+/g, ' ')
-    try {
-      await client.query(stmt)
-      ok++
-      console.log(`  ✅ [${idx+1}/${statements.length}] ${preview}`)
-    } catch (err) {
-      const msg = err.message ?? ''
-      if (
-        msg.includes('already exists') ||
-        msg.includes('duplicate key') ||
-        msg.includes('already enabled')
-      ) {
-        skipped++
-        console.log(`  ⏭️  [${idx+1}/${statements.length}] SKIP: ${preview}`)
-      } else {
-        failed++
-        console.error(`  ❌ [${idx+1}/${statements.length}] FAIL: ${preview}`)
-        console.error(`       → ${msg}`)
+  for (const migrationFile of migrationFiles) {
+    const sql = readFileSync(join(MIGRATIONS_DIR, migrationFile), 'utf-8')
+    const statements = splitSQL(sql).filter(s => s.length > 5)
+    console.log(`\n📄 ${migrationFile}`)
+    console.log(`   Statements: ${statements.length}`)
+
+    for (let idx = 0; idx < statements.length; idx++) {
+      const stmt = statements[idx]
+      const preview = stmt.slice(0, 72).replace(/\s+/g, ' ')
+      try {
+        await client.query(stmt)
+        ok++
+        console.log(`  ✅ [${idx+1}/${statements.length}] ${preview}`)
+      } catch (err) {
+        const msg = err.message ?? ''
+        if (
+          msg.includes('already exists') ||
+          msg.includes('duplicate key') ||
+          msg.includes('already enabled') ||
+          msg.includes('already in schema')
+        ) {
+          skipped++
+          console.log(`  ⏭️  [${idx+1}/${statements.length}] SKIP: ${preview}`)
+        } else {
+          failed++
+          console.error(`  ❌ [${idx+1}/${statements.length}] FAIL: ${preview}`)
+          console.error(`       → ${msg}`)
+        }
       }
     }
   }

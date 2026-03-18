@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { Tables } from '@/types/database'
 import type { Json } from '@/types/database'
@@ -62,6 +63,8 @@ export async function updateBasicInfo(data: {
     .eq('id', user.id)
 
   if (error) return { error: error.message }
+  revalidatePath('/profile')
+  revalidatePath('/dashboard')
   return { success: true }
 }
 
@@ -91,6 +94,7 @@ export async function updateProfessionalDetails(data: {
   )
 
   if (error) return { error: error.message }
+  revalidatePath('/profile')
   return { success: true }
 }
 
@@ -99,6 +103,7 @@ export async function updateProfessionalDetails(data: {
 export async function updatePracticeDetails(data: {
   practice_type: 'online_only' | 'clinic_only' | 'both'
   clinic_name?: string
+  logo_url?: string
   practice_address?: string
   city: string
   state: string
@@ -110,24 +115,38 @@ export async function updatePracticeDetails(data: {
 }) {
   const { supabase, user } = await getAuthUser()
 
-  const { error } = await supabase.from('dietitian_practice').upsert(
-    {
-      dietitian_id: user.id,
-      practice_type: data.practice_type,
-      clinic_name: data.clinic_name || null,
-      practice_address: data.practice_address || null,
-      city: data.city,
-      state: data.state,
-      pincode: data.pincode,
-      online_consultation_fee: data.online_consultation_fee,
-      clinic_consultation_fee: data.clinic_consultation_fee,
-      consultation_duration: data.consultation_duration,
-      languages: data.languages,
-    },
-    { onConflict: 'dietitian_id' }
-  )
+  const payload = {
+    dietitian_id: user.id,
+    practice_type: data.practice_type,
+    clinic_name: data.clinic_name || null,
+    logo_url: data.logo_url || null,
+    practice_address: data.practice_address || null,
+    city: data.city,
+    state: data.state,
+    pincode: data.pincode,
+    online_consultation_fee: data.online_consultation_fee,
+    clinic_consultation_fee: data.clinic_consultation_fee,
+    consultation_duration: data.consultation_duration,
+    languages: data.languages,
+  }
+
+  let { error } = await supabase.from('dietitian_practice').upsert(payload, {
+    onConflict: 'dietitian_id',
+  })
+
+  // Temporary fallback for cases where DB schema migration is applied but
+  // PostgREST schema cache has not refreshed yet.
+  if (error?.message?.includes('logo_url')) {
+    const { logo_url: _logoUrl, ...payloadWithoutLogo } = payload
+    void _logoUrl
+    const retry = await supabase.from('dietitian_practice').upsert(payloadWithoutLogo, {
+      onConflict: 'dietitian_id',
+    })
+    error = retry.error
+  }
 
   if (error) return { error: error.message }
+  revalidatePath('/profile')
   return { success: true }
 }
 
@@ -158,6 +177,7 @@ export async function updateAvailability(data: {
   })
 
   if (error) return { error: error.message }
+  revalidatePath('/profile')
   return { success: true }
 }
 
@@ -169,5 +189,6 @@ export async function changePassword(newPassword: string) {
   const { error } = await supabase.auth.updateUser({ password: newPassword })
 
   if (error) return { error: error.message }
+  revalidatePath('/profile')
   return { success: true }
 }

@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getLabReport } from '@/actions/lab-reports'
-import { LabReportDetail } from '@/components/lab-reports/lab-report-detail'
 
 export const metadata: Metadata = { title: 'Lab Report' }
 
@@ -15,5 +14,5 @@ export default async function LabReportDetailPage(props: {
     notFound()
   }
 
-  return <LabReportDetail report={report} />
+  redirect(`/patients/${report.patient_id}/lab-reports/${report.id}`)
 }

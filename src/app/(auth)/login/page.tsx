@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { AuthTabs } from './auth-tabs'
 
-export const metadata: Metadata = { title: 'Login — peepal' }
+export const metadata: Metadata = { title: 'Login — Zero' }
 
 export default async function LoginPage({
   searchParams,

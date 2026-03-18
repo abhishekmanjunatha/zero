@@ -8,9 +8,6 @@ import { fileURLToPath } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-const SUPABASE_URL = 'https://twoesyyxaypygyajhdtd.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3b2VzeXl4YXlweWd5YWpoZHRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1Nzc4MzEsImV4cCI6MjA4OTE1MzgzMX0.7pI4B9AoNKJ2lul6kFBoBM_HLrEsXhEfQKqFrcLKRT8'
-
 const sqlPath = join(__dirname, '..', 'supabase', 'migrations', '00001_initial_schema.sql')
 const sql = readFileSync(sqlPath, 'utf-8')
 

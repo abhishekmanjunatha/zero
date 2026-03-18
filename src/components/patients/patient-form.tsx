@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
@@ -16,9 +16,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { ContactPickerButton } from '@/components/shared/contact-picker-button'
 import { cn } from '@/lib/utils'
 import { createPatientSchema, type CreatePatientInput } from '@/lib/validations/patient'
 import { createPatient, updatePatient } from '@/actions/patients'
+import { useLocalDraft } from '@/hooks/use-local-draft'
 import type { Tables } from '@/types/database'
 
 const MEDICAL_CONDITIONS = [
@@ -32,11 +34,43 @@ interface PatientFormProps {
   mode: 'create' | 'edit'
   patient?: Tables<'patients'>
   onSuccess?: (patientId: string) => void
+  embedded?: boolean
+  onCancel?: () => void
 }
 
-export function PatientForm({ mode, patient, onSuccess }: PatientFormProps) {
+interface PatientFormDraft {
+  values: CreatePatientInput
+  selectedConditions: string[]
+  selectedAllergies: string[]
+  showOptional: boolean
+}
+
+export function PatientForm({ mode, patient, onSuccess, embedded = false, onCancel }: PatientFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const didHydrateDraftRef = useRef(false)
+  const defaultValues: CreatePatientInput = {
+    full_name: patient?.full_name ?? '',
+    phone: patient?.phone ?? '',
+    gender: patient?.gender ?? undefined,
+    date_of_birth: patient?.date_of_birth ?? '',
+    height_cm: patient?.height_cm ?? undefined,
+    weight_kg: patient?.weight_kg ?? undefined,
+    activity_level: patient?.activity_level ?? undefined,
+    sleep_hours: patient?.sleep_hours ?? undefined,
+    work_type: patient?.work_type ?? undefined,
+    dietary_type: patient?.dietary_type ?? undefined,
+    primary_goal: patient?.primary_goal ?? undefined,
+    medical_conditions: patient?.medical_conditions ?? [],
+    food_allergies: patient?.food_allergies ?? [],
+  }
+  const draftKey = mode === 'edit' && patient
+    ? `patient-form-draft:edit:${patient.id}`
+    : 'patient-form-draft:create'
+  const { loadDraft, saveDraft, clearDraft } = useLocalDraft<PatientFormDraft>({
+    storageKey: draftKey,
+    debounceMs: 500,
+  })
   const [showOptional, setShowOptional] = useState(
     mode === 'edit' &&
       !!(
@@ -60,23 +94,49 @@ export function PatientForm({ mode, patient, onSuccess }: PatientFormProps) {
     handleSubmit,
     control,
     setError,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<CreatePatientInput>({
     resolver: zodResolver(createPatientSchema),
-    defaultValues: {
-      full_name: patient?.full_name ?? '',
-      phone: patient?.phone ?? '',
-      gender: patient?.gender ?? undefined,
-      date_of_birth: patient?.date_of_birth ?? '',
-      height_cm: patient?.height_cm ?? undefined,
-      weight_kg: patient?.weight_kg ?? undefined,
-      activity_level: patient?.activity_level ?? undefined,
-      sleep_hours: patient?.sleep_hours ?? undefined,
-      work_type: patient?.work_type ?? undefined,
-      dietary_type: patient?.dietary_type ?? undefined,
-      primary_goal: patient?.primary_goal ?? undefined,
-    },
+    defaultValues,
   })
+
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const watchedValues = watch()
+
+  useEffect(() => {
+    if (didHydrateDraftRef.current) return
+
+    const draft = loadDraft()
+    if (!draft) {
+      didHydrateDraftRef.current = true
+      return
+    }
+
+    ;(Object.keys(draft.values) as (keyof CreatePatientInput)[]).forEach((key) => {
+      const value = draft.values[key]
+      if (value === undefined) return
+
+      setValue(key, value)
+    })
+
+    setSelectedConditions(draft.selectedConditions)
+    setSelectedAllergies(draft.selectedAllergies)
+    setShowOptional(draft.showOptional)
+    didHydrateDraftRef.current = true
+  }, [loadDraft, setValue])
+
+  useEffect(() => {
+    if (!didHydrateDraftRef.current) return
+
+    saveDraft({
+      values: watchedValues,
+      selectedConditions,
+      selectedAllergies,
+      showOptional,
+    })
+  }, [saveDraft, selectedAllergies, selectedConditions, showOptional, watchedValues])
 
   const toggleCondition = (v: string) =>
     setSelectedConditions((prev) =>
@@ -102,7 +162,8 @@ export function PatientForm({ mode, patient, onSuccess }: PatientFormProps) {
           setError('root', { message: result.error })
           return
         }
-        toast.success('Patient created successfully!')
+        toast.success('Patient created successfully')
+        clearDraft()
         if (onSuccess && result.patientId) {
           onSuccess(result.patientId)
         } else {
@@ -114,7 +175,8 @@ export function PatientForm({ mode, patient, onSuccess }: PatientFormProps) {
           setError('root', { message: result.error })
           return
         }
-        toast.success('Patient updated!')
+        toast.success('Patient updated successfully')
+        clearDraft()
         if (onSuccess) {
           onSuccess(patient.id)
         } else {
@@ -156,9 +218,21 @@ export function PatientForm({ mode, patient, onSuccess }: PatientFormProps) {
 
           {/* Phone */}
           <div className="space-y-1.5">
-            <Label htmlFor="phone">
-              Phone Number <span className="text-destructive">*</span>
-            </Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="phone">
+                Phone Number <span className="text-destructive">*</span>
+              </Label>
+              <ContactPickerButton
+                className="h-8 px-2"
+                ariaLabel="Pick patient contact"
+                onContactPicked={({ displayName, phone }) => {
+                  setValue('phone', phone, { shouldDirty: true, shouldValidate: true })
+                  if (!watchedValues.full_name?.trim()) {
+                    setValue('full_name', displayName, { shouldDirty: true, shouldValidate: true })
+                  }
+                }}
+              />
+            </div>
             <Input
               id="phone"
               placeholder="e.g. 9999988888"
@@ -356,8 +430,8 @@ export function PatientForm({ mode, patient, onSuccess }: PatientFormProps) {
                     className={cn(
                       'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
                       selectedConditions.includes(cond)
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-background border-border text-muted-foreground hover:border-emerald-400'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-border text-muted-foreground hover:border-primary/50'
                     )}
                   >
                     {cond}
@@ -378,8 +452,8 @@ export function PatientForm({ mode, patient, onSuccess }: PatientFormProps) {
                     className={cn(
                       'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
                       selectedAllergies.includes(allergy)
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-background border-border text-muted-foreground hover:border-emerald-400'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-border text-muted-foreground hover:border-primary/50'
                     )}
                   >
                     {allergy}
@@ -396,15 +470,21 @@ export function PatientForm({ mode, patient, onSuccess }: PatientFormProps) {
         <Button
           type="submit"
           disabled={isPending}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 rounded-full px-5"
         >
           {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-          {mode === 'create' ? 'Create Patient' : 'Save Changes'}
+          {isPending ? 'Saving…' : mode === 'create' ? 'Create Patient' : 'Save Changes'}
         </Button>
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.back()}
+          onClick={() => {
+            if (embedded) {
+              onCancel?.()
+              return
+            }
+            router.back()
+          }}
           disabled={isPending}
         >
           Cancel

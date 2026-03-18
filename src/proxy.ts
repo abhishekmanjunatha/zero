@@ -8,7 +8,16 @@ const AUTH_ROUTES = ['/login', '/register', '/verify-email', '/forgot-password',
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const { supabaseResponse, user } = await updateSession(request)
+  let supabaseResponse: NextResponse
+  let user: { id: string } | null = null
+
+  try {
+    const sessionResult = await updateSession(request)
+    supabaseResponse = sessionResult.supabaseResponse
+    user = sessionResult.user
+  } catch {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
 
   const isProtected = PROTECTED_ROUTES.some((r) => pathname.startsWith(r))
   const isAuthRoute = AUTH_ROUTES.some((r) => pathname.startsWith(r))

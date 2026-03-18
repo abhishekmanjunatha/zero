@@ -21,10 +21,10 @@ export function OnboardingHeader({ currentStep, title, description }: Onboarding
     <div className="space-y-6 mb-8">
       {/* Logo */}
       <div className="flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600">
+        <div className="flex h-9 w-9 items-center justify-center rounded-2xl clay-button-primary">
           <Leaf className="h-4 w-4 text-white" />
         </div>
-        <span className="text-xl font-semibold tracking-tight">peepal</span>
+        <span className="text-xl font-semibold tracking-tight">Zero</span>
       </div>
 
       {/* Progress */}
@@ -39,7 +39,7 @@ export function OnboardingHeader({ currentStep, title, description }: Onboarding
         {/* Progress bar */}
         <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
           <div
-            className="h-full rounded-full bg-emerald-600 transition-all duration-500"
+            className="h-full rounded-full bg-primary transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -54,8 +54,8 @@ export function OnboardingHeader({ currentStep, title, description }: Onboarding
                 <div
                   className={cn(
                     'h-6 w-6 rounded-full flex items-center justify-center text-xs font-semibold transition-all',
-                    isCompleted && 'bg-emerald-600 text-white',
-                    isCurrent && 'bg-emerald-600 text-white ring-4 ring-emerald-600/20',
+                    isCompleted && 'bg-primary text-primary-foreground',
+                    isCurrent && 'bg-primary text-primary-foreground ring-4 ring-primary/20',
                     !isCompleted && !isCurrent && 'bg-muted text-muted-foreground'
                   )}
                 >

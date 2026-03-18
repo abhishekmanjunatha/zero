@@ -34,14 +34,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-transparent">
       <AppSidebar />
       <div className="flex flex-1 flex-col min-w-0">
         <AppTopBar
           dietitianName={dietitian?.full_name ?? 'Dietitian'}
           dietitianPhoto={dietitian?.photo_url}
         />
-        <main className="flex-1 px-4 py-6 lg:px-8">
+        <main className="flex-1 px-4 py-5 pb-24 lg:px-8 lg:py-7 lg:pb-8">
           {children}
         </main>
       </div>

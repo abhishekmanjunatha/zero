@@ -102,6 +102,7 @@ export type Database = {
           dietitian_id: string
           practice_type: 'online_only' | 'clinic_only' | 'both' | null
           clinic_name: string | null
+          logo_url: string | null
           practice_address: string | null
           city: string | null
           state: string | null
@@ -118,6 +119,7 @@ export type Database = {
           dietitian_id: string
           practice_type?: 'online_only' | 'clinic_only' | 'both' | null
           clinic_name?: string | null
+          logo_url?: string | null
           practice_address?: string | null
           city?: string | null
           state?: string | null
@@ -134,6 +136,7 @@ export type Database = {
           dietitian_id?: string
           practice_type?: 'online_only' | 'clinic_only' | 'both' | null
           clinic_name?: string | null
+          logo_url?: string | null
           practice_address?: string | null
           city?: string | null
           state?: string | null
@@ -259,7 +262,7 @@ export type Database = {
           mode: 'walk_in' | 'scheduled'
           appointment_date: string
           appointment_time: string
-          status: 'upcoming' | 'in_progress' | 'completed' | 'cancelled'
+          status: 'upcoming' | 'checked_in' | 'in_progress' | 'completed' | 'cancelled' | 'no_show'
           notes: string | null
           created_at: string
           updated_at: string
@@ -273,7 +276,7 @@ export type Database = {
           mode: 'walk_in' | 'scheduled'
           appointment_date: string
           appointment_time: string
-          status?: 'upcoming' | 'in_progress' | 'completed' | 'cancelled'
+          status?: 'upcoming' | 'checked_in' | 'in_progress' | 'completed' | 'cancelled' | 'no_show'
           notes?: string | null
           created_at?: string
           updated_at?: string
@@ -287,7 +290,7 @@ export type Database = {
           mode?: 'walk_in' | 'scheduled'
           appointment_date?: string
           appointment_time?: string
-          status?: 'upcoming' | 'in_progress' | 'completed' | 'cancelled'
+          status?: 'upcoming' | 'checked_in' | 'in_progress' | 'completed' | 'cancelled' | 'no_show'
           notes?: string | null
           created_at?: string
           updated_at?: string
@@ -325,6 +328,33 @@ export type Database = {
           title?: string
           content?: Json
           version?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      document_templates: {
+        Row: {
+          id: string
+          dietitian_id: string
+          name: string
+          blocks: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          dietitian_id: string
+          name: string
+          blocks?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          dietitian_id?: string
+          name?: string
+          blocks?: Json
           created_at?: string
           updated_at?: string
         }
@@ -383,7 +413,7 @@ export type Database = {
           id: string
           dietitian_id: string
           patient_id: string
-          event_type: 'appointment_created' | 'appointment_completed' | 'clinical_document_created' | 'lab_report_uploaded' | 'weight_updated' | 'note_added'
+          event_type: 'appointment_created' | 'appointment_checked_in' | 'appointment_in_progress' | 'appointment_completed' | 'appointment_cancelled' | 'appointment_no_show' | 'clinical_document_created' | 'lab_report_uploaded' | 'weight_updated' | 'note_added'
           event_data: Json
           reference_id: string | null
           created_at: string
@@ -392,7 +422,7 @@ export type Database = {
           id?: string
           dietitian_id: string
           patient_id: string
-          event_type: 'appointment_created' | 'appointment_completed' | 'clinical_document_created' | 'lab_report_uploaded' | 'weight_updated' | 'note_added'
+          event_type: 'appointment_created' | 'appointment_checked_in' | 'appointment_in_progress' | 'appointment_completed' | 'appointment_cancelled' | 'appointment_no_show' | 'clinical_document_created' | 'lab_report_uploaded' | 'weight_updated' | 'note_added'
           event_data?: Json
           reference_id?: string | null
           created_at?: string
@@ -401,7 +431,7 @@ export type Database = {
           id?: string
           dietitian_id?: string
           patient_id?: string
-          event_type?: 'appointment_created' | 'appointment_completed' | 'clinical_document_created' | 'lab_report_uploaded' | 'weight_updated' | 'note_added'
+          event_type?: 'appointment_created' | 'appointment_checked_in' | 'appointment_in_progress' | 'appointment_completed' | 'appointment_cancelled' | 'appointment_no_show' | 'clinical_document_created' | 'lab_report_uploaded' | 'weight_updated' | 'note_added'
           event_data?: Json
           reference_id?: string | null
           created_at?: string
@@ -467,6 +497,7 @@ export type DietitianAvailability = Tables<'dietitian_availability'>
 export type Patient = Tables<'patients'>
 export type Appointment = Tables<'appointments'>
 export type ClinicalNote = Tables<'clinical_notes'>
+export type DocumentTemplate = Tables<'document_templates'>
 export type LabReport = Tables<'lab_reports'>
 export type TimelineEvent = Tables<'timeline_events'>
 export type Document = Tables<'documents'>

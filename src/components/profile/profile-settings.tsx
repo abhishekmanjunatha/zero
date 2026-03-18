@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   User, Briefcase, Building2, Calendar, Settings, Loader2, Upload,
-  Camera, Plus, Trash2, Eye, Wifi, LayoutGrid,
+  Plus, Trash2, Eye, Wifi, LayoutGrid,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ContactPickerButton } from '@/components/shared/contact-picker-button'
 import {
   Select,
   SelectContent,
@@ -39,6 +40,7 @@ import type { SlotDuration, BufferTime, DayAvailability } from '@/types/app'
 import type { DayScheduleInput } from '@/lib/validations/onboarding'
 import type { Tables } from '@/types/database'
 import { createClient } from '@/lib/supabase/client'
+import { compressForLogoUpload } from '@/lib/utils/file-compression'
 import {
   updateBasicInfo,
   updateProfessionalDetails,
@@ -121,7 +123,7 @@ export function ProfileSettings({
         <ProfessionalTab professional={professional} onSaved={() => router.refresh()} />
       </TabsContent>
       <TabsContent value="practice">
-        <PracticeTab practice={practice} onSaved={() => router.refresh()} />
+        <PracticeTab dietitianId={dietitian.id} practice={practice} onSaved={() => router.refresh()} />
       </TabsContent>
       <TabsContent value="availability">
         <AvailabilityTab availability={availability} onSaved={() => router.refresh()} />
@@ -145,7 +147,7 @@ function BasicInfoTab({ dietitian, email, onSaved }: {
   const [bioLength, setBioLength] = useState(dietitian.short_bio?.length ?? 0)
 
   const {
-    register, handleSubmit, setValue, setError, formState: { errors },
+    register, handleSubmit, setValue, setError, getValues, formState: { errors },
   } = useForm<BasicProfileInput>({
     resolver: zodResolver(basicProfileSchema),
     defaultValues: {
@@ -184,7 +186,7 @@ function BasicInfoTab({ dietitian, email, onSaved }: {
     startTransition(async () => {
       const result = await updateBasicInfo({ ...data, photo_url: photoUrl })
       if (result?.error) { setError('root', { message: result.error }); return }
-      toast.success('Basic information updated!')
+      toast.success('Basic information updated successfully')
       onSaved()
     })
   }
@@ -192,7 +194,7 @@ function BasicInfoTab({ dietitian, email, onSaved }: {
   const initials = (dietitian.full_name ?? 'D').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
+    <form onSubmit={handleSubmit(onSubmit)} className="clay-card p-6 space-y-5">
       <h2 className="text-lg font-semibold">Basic Information</h2>
       {errors.root && (
         <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errors.root.message}</div>
@@ -203,7 +205,7 @@ function BasicInfoTab({ dietitian, email, onSaved }: {
         <div className="relative">
           <Avatar className="h-20 w-20">
             <AvatarImage src={photoUrl} alt="Profile" />
-            <AvatarFallback className="text-lg bg-emerald-100 text-emerald-700">{initials}</AvatarFallback>
+            <AvatarFallback className="text-lg bg-primary/15 text-primary">{initials}</AvatarFallback>
           </Avatar>
           {isUploading && (
             <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40">
@@ -236,7 +238,19 @@ function BasicInfoTab({ dietitian, email, onSaved }: {
 
       {/* Phone */}
       <div className="space-y-1.5">
-        <Label htmlFor="p-phone">Phone Number <span className="text-destructive">*</span></Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="p-phone">Phone Number <span className="text-destructive">*</span></Label>
+          <ContactPickerButton
+            className="h-8 px-2"
+            ariaLabel="Pick profile contact"
+            onContactPicked={({ displayName, phone }) => {
+              setValue('phone', phone, { shouldDirty: true, shouldValidate: true })
+              if (!getValues('full_name')?.trim()) {
+                setValue('full_name', displayName, { shouldDirty: true, shouldValidate: true })
+              }
+            }}
+          />
+        </div>
         <Input id="p-phone" type="tel" {...register('phone')} />
         {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
       </div>
@@ -344,13 +358,13 @@ function ProfessionalTab({ professional, onSaved }: {
         education: education.filter((e) => e.degree && e.institution && e.graduation_year),
       })
       if (result?.error) { setError('root', { message: result.error }); return }
-      toast.success('Professional details updated!')
+      toast.success('Professional details updated successfully')
       onSaved()
     })
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="rounded-2xl border bg-card p-6 shadow-sm space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="clay-card p-6 space-y-6">
       <h2 className="text-lg font-semibold">Professional Details</h2>
       {errors.root && (
         <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errors.root.message}</div>
@@ -462,13 +476,16 @@ function ProfessionalTab({ professional, onSaved }: {
 
 // ── Section 3: Practice Details ─────────────────────────────────────────────
 
-function PracticeTab({ practice, onSaved }: {
-  practice: Tables<'dietitian_practice'> | null; onSaved: () => void
+function PracticeTab({ dietitianId, practice, onSaved }: {
+  dietitianId: string; practice: Tables<'dietitian_practice'> | null; onSaved: () => void
 }) {
   const [isPending, startTransition] = useTransition()
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(
     (practice?.languages as string[]) ?? []
   )
+  const [logoUrl, setLogoUrl] = useState(practice?.logo_url ?? '')
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+  const logoInputRef = useRef<HTMLInputElement>(null)
 
   const {
     register, handleSubmit, setValue, watch, setError, formState: { errors },
@@ -477,6 +494,7 @@ function PracticeTab({ practice, onSaved }: {
     defaultValues: {
       practice_type: practice?.practice_type as PracticeInput['practice_type'] ?? undefined,
       clinic_name: practice?.clinic_name ?? '',
+      logo_url: practice?.logo_url ?? '',
       practice_address: practice?.practice_address ?? '',
       city: practice?.city ?? '',
       state: practice?.state ?? '',
@@ -498,22 +516,64 @@ function PracticeTab({ practice, onSaved }: {
     setValue('languages', next)
   }
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const allowed = ['image/jpeg', 'image/png']
+    if (!allowed.includes(file.type)) {
+      toast.error('Only JPG or PNG images are allowed')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Logo must be under 2 MB')
+      return
+    }
+
+    setIsUploadingLogo(true)
+    try {
+      const compressed = await compressForLogoUpload(file)
+      if (compressed.file.size > 2 * 1024 * 1024) {
+        toast.error('Compressed logo is still above 2 MB. Please use a smaller image.')
+        return
+      }
+
+      const supabase = createClient()
+      const path = `${dietitianId}/practice-logo.jpg`
+      const { error } = await supabase.storage.from('avatars').upload(path, compressed.file, { upsert: true })
+      if (error) {
+        toast.error('Logo upload failed: ' + error.message)
+        return
+      }
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+      const url = `${urlData.publicUrl}?t=${Date.now()}`
+      setLogoUrl(url)
+      setValue('logo_url', url)
+      toast.success('Practice logo uploaded')
+    } finally {
+      setIsUploadingLogo(false)
+      if (logoInputRef.current) logoInputRef.current.value = ''
+    }
+  }
+
   const onSubmit = (data: PracticeInput) => {
     startTransition(async () => {
       const result = await updatePracticeDetails({
         ...data,
+        logo_url: logoUrl,
         languages: selectedLanguages,
         online_consultation_fee: data.online_consultation_fee ?? 0,
         clinic_consultation_fee: data.clinic_consultation_fee ?? 0,
       })
       if (result?.error) { setError('root', { message: result.error }); return }
-      toast.success('Practice details updated!')
+      toast.success('Practice details updated successfully')
       onSaved()
     })
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="rounded-2xl border bg-card p-6 shadow-sm space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="clay-card p-6 space-y-6">
       <h2 className="text-lg font-semibold">Clinic / Practice Details</h2>
       {errors.root && (
         <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errors.root.message}</div>
@@ -530,9 +590,9 @@ function PracticeTab({ practice, onSaved }: {
               <button key={pt.value} type="button" onClick={() => setValue('practice_type', pt.value)}
                 className={cn(
                   'flex flex-col items-center gap-2 rounded-xl border-2 px-4 py-5 text-center transition-all',
-                  isSelected ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-border hover:border-muted-foreground/40 hover:bg-muted/40'
+                  isSelected ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-muted-foreground/40 hover:bg-muted/40'
                 )}>
-                <Icon className={cn('h-6 w-6', isSelected ? 'text-emerald-600' : 'text-muted-foreground')} />
+                <Icon className={cn('h-6 w-6', isSelected ? 'text-primary' : 'text-muted-foreground')} />
                 <span className="text-sm font-medium">{pt.label}</span>
                 <span className="text-xs text-muted-foreground">{pt.description}</span>
               </button>
@@ -553,6 +613,43 @@ function PracticeTab({ practice, onSaved }: {
               <Input id="p-cname" {...register('clinic_name')} />
               {errors.clinic_name && <p className="text-xs text-destructive">{errors.clinic_name.message}</p>}
             </div>
+
+            <div className="space-y-2">
+              <Label>Practice Logo</Label>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Avatar className="h-14 w-14 rounded-md border">
+                    <AvatarImage src={logoUrl} alt="Practice logo" className="object-contain p-1" />
+                    <AvatarFallback className="rounded-md text-xs">Logo</AvatarFallback>
+                  </Avatar>
+                  {isUploadingLogo && (
+                    <div className="absolute inset-0 flex items-center justify-center rounded-md bg-black/35">
+                      <Loader2 className="h-4 w-4 text-white animate-spin" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    className="hidden"
+                    onChange={handleLogoUpload}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={isUploadingLogo}
+                  >
+                    {isUploadingLogo ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Uploading…</> : <><Upload className="h-4 w-4 mr-1.5" /> Upload Logo</>}
+                  </Button>
+                  <p className="mt-1 text-xs text-muted-foreground">JPG or PNG · Max 2 MB · Auto-compressed</p>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <Label htmlFor="p-addr">Practice Address <span className="text-destructive">*</span></Label>
               <Textarea id="p-addr" rows={2} {...register('practice_address')} />
@@ -723,13 +820,13 @@ function AvailabilityTab({ availability, onSaved }: {
     startTransition(async () => {
       const res = await updateAvailability(result.data)
       if (res?.error) { setFormError(res.error); return }
-      toast.success('Availability updated!')
+      toast.success('Availability updated successfully')
       onSaved()
     })
   }
 
   return (
-    <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+    <div className="clay-card overflow-hidden">
       <div className="px-6 py-5 border-b">
         <h2 className="text-lg font-semibold">Weekly Availability</h2>
         <p className="text-sm text-muted-foreground mt-1">Changes affect appointment slot generation</p>
@@ -853,7 +950,7 @@ function AccountTab({ email }: { email: string }) {
   return (
     <div className="space-y-6">
       {/* Change Password */}
-      <form onSubmit={handleSubmit(onSubmit)} className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} className="clay-card p-6 space-y-5">
         <h2 className="text-lg font-semibold">Change Password</h2>
 
         <div className="space-y-1.5">
@@ -874,7 +971,7 @@ function AccountTab({ email }: { email: string }) {
       </form>
 
       {/* Account Info */}
-      <div className="rounded-2xl border bg-card p-6 shadow-sm space-y-4">
+      <div className="clay-card p-6 space-y-4">
         <h2 className="text-lg font-semibold">Account Information</h2>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">

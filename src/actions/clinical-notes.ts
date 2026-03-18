@@ -1,9 +1,25 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
 import type { Tables, Json } from '@/types/database'
 import type { CreateClinicalNoteInput } from '@/lib/validations/clinical-note'
 import { createClinicalNoteSchema } from '@/lib/validations/clinical-note'
+
+async function ensurePatientOwnedByDietitian(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  dietitianId: string,
+  patientId: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('patients')
+    .select('id')
+    .eq('id', patientId)
+    .eq('dietitian_id', dietitianId)
+    .maybeSingle()
+
+  return !!data
+}
 
 // ── Get clinical notes (for a patient, or all) ──────────────────────────────
 
@@ -26,7 +42,10 @@ export async function getClinicalNotes(
     query = query.eq('patient_id', patientId)
   }
 
-  const { data } = await query
+  const { data, error } = await query
+  if (error) {
+    console.error('[ClinicalNotes] getClinicalNotes error:', error.message)
+  }
   return (data as Tables<'clinical_notes'>[] | null) ?? []
 }
 
@@ -41,12 +60,16 @@ export async function getClinicalNote(
   } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('clinical_notes')
     .select('*')
     .eq('id', noteId)
     .eq('dietitian_id', user.id)
     .single()
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('[ClinicalNotes] getClinicalNote error:', error.message)
+  }
 
   return (data as Tables<'clinical_notes'> | null) ?? null
 }
@@ -66,6 +89,15 @@ export async function createClinicalNote(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
+
+  const ownsPatient = await ensurePatientOwnedByDietitian(
+    supabase,
+    user.id,
+    parsed.data.patient_id
+  )
+  if (!ownsPatient) {
+    return { error: 'Invalid patient reference for this account.' }
+  }
 
   const { data, error } = await supabase
     .from('clinical_notes')
@@ -98,6 +130,10 @@ export async function createClinicalNote(
     reference_id: noteId,
   })
 
+  revalidatePath('/clinical-notes')
+  revalidatePath('/dashboard')
+  revalidatePath(`/patients/${parsed.data.patient_id}`)
+
   return { noteId }
 }
 
@@ -117,6 +153,27 @@ export async function updateClinicalNote(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
+
+  const ownsPatient = await ensurePatientOwnedByDietitian(
+    supabase,
+    user.id,
+    parsed.data.patient_id
+  )
+  if (!ownsPatient) {
+    return { error: 'Invalid patient reference for this account.' }
+  }
+
+  const { data: noteRow } = await supabase
+    .from('clinical_notes')
+    .select('patient_id')
+    .eq('id', noteId)
+    .eq('dietitian_id', user.id)
+    .single()
+
+  if (!noteRow) return { error: 'Clinical note not found' }
+  if ((noteRow as { patient_id: string }).patient_id !== parsed.data.patient_id) {
+    return { error: 'Patient mismatch for this clinical note.' }
+  }
 
   // Get current version
   const { data: current } = await supabase
@@ -143,6 +200,10 @@ export async function updateClinicalNote(
     return { error: error.message }
   }
 
+  revalidatePath('/clinical-notes')
+  revalidatePath('/dashboard')
+  revalidatePath(`/patients/${parsed.data.patient_id}`)
+
   return {}
 }
 
@@ -157,6 +218,15 @@ export async function deleteClinicalNote(
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
+  const { data: noteRow } = await supabase
+    .from('clinical_notes')
+    .select('patient_id')
+    .eq('id', noteId)
+    .eq('dietitian_id', user.id)
+    .maybeSingle()
+
+  if (!noteRow) return { error: 'Clinical note not found' }
+
   const { error } = await supabase
     .from('clinical_notes')
     .delete()
@@ -164,5 +234,10 @@ export async function deleteClinicalNote(
     .eq('dietitian_id', user.id)
 
   if (error) return { error: error.message }
+
+  revalidatePath('/clinical-notes')
+  revalidatePath('/dashboard')
+  revalidatePath(`/patients/${(noteRow as { patient_id: string }).patient_id}`)
+
   return {}
 }

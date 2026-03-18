@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Search, User, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useDebounce } from '@/hooks/use-debounce'
+import { ContactPickerButton } from '@/components/shared/contact-picker-button'
 import { cn } from '@/lib/utils'
 
 interface PatientResult {
@@ -98,9 +99,17 @@ export function PatientSearchCommand({ className }: PatientSearchCommandProps) {
           onFocus={() => {
             if (results.length > 0) setOpen(true)
           }}
-          className="h-10 w-full rounded-lg border bg-background pl-9 pr-9 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-muted-foreground"
+          className="h-10 w-full rounded-lg border bg-background pl-9 pr-16 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-muted-foreground"
           autoComplete="off"
           spellCheck={false}
+        />
+        <ContactPickerButton
+          className="absolute right-10 h-7 w-7 p-0"
+          ariaLabel="Pick contact to search patient"
+          onContactPicked={({ phone }) => {
+            setQuery(phone)
+            setOpen(false)
+          }}
         />
         {query && (
           <button

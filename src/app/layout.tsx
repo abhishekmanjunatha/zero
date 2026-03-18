@@ -5,14 +5,14 @@ import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 const geist = Geist({
-  variable: '--font-geist',
+  variable: '--font-sans',
   subsets: ['latin'],
 })
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | peepal',
-    default: 'peepal — Dietitian Practice Management',
+    template: '%s | Zero',
+    default: 'Zero — Dietitian Practice Management',
   },
   description: 'Your complete dietitian practice, simplified.',
 }

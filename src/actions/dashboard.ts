@@ -1,12 +1,13 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getCurrentDateInTimeZone } from '@/lib/utils/timezone'
 
 export interface TodayAppointment {
   id: string
   appointment_date: string
   appointment_time: string
-  status: 'upcoming' | 'in_progress' | 'completed' | 'cancelled'
+  status: 'upcoming' | 'checked_in' | 'in_progress' | 'completed' | 'cancelled' | 'no_show'
   mode: 'walk_in' | 'scheduled'
   purpose: 'new_consultation' | 'follow_up' | 'review_with_report' | 'custom'
   custom_purpose: string | null
@@ -33,14 +34,15 @@ export async function getTodayAppointments(): Promise<TodayAppointment[]> {
   } = await supabase.auth.getUser()
   if (!user) return []
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getCurrentDateInTimeZone()
 
   const { data, error } = await supabase
     .from('appointments')
     .select('id, appointment_date, appointment_time, status, mode, purpose, custom_purpose, patients(id, full_name, patient_code, phone)')
     .eq('dietitian_id', user.id)
-    .eq('appointment_date', today)
     .neq('status', 'cancelled')
+    .neq('status', 'no_show')
+    .or(`appointment_date.eq.${today},status.in.(checked_in,in_progress)`)
     .order('appointment_time', { ascending: true })
 
   if (error || !data) return []

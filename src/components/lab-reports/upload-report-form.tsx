@@ -22,8 +22,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ContactPickerButton } from '@/components/shared/contact-picker-button'
 import { useDebounce } from '@/hooks/use-debounce'
 import { createClient } from '@/lib/supabase/client'
+import { compressForLabUpload } from '@/lib/utils/file-compression'
 import { uploadLabReport } from '@/actions/lab-reports'
 
 interface PatientResult {
@@ -33,10 +35,29 @@ interface PatientResult {
   phone: string
 }
 
-export function UploadReportForm() {
+function createUploadNonce() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return Math.random().toString(36).slice(2)
+}
+
+function extensionForMimeType(type: string) {
+  if (type === 'image/jpeg') return 'jpg'
+  if (type === 'image/png') return 'png'
+  if (type === 'application/pdf') return 'pdf'
+  return 'file'
+}
+
+interface UploadReportFormProps {
+  initialPatientId?: string
+  lockPatient?: boolean
+}
+
+export function UploadReportForm({ initialPatientId, lockPatient = false }: UploadReportFormProps = {}) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const preselectedPatientId = searchParams.get('patient')
+  const preselectedPatientId = initialPatientId ?? searchParams.get('patient')
 
   const [isPending, startTransition] = useTransition()
 
@@ -150,23 +171,32 @@ export function UploadReportForm() {
         return
       }
 
-      // Upload files to Supabase Storage
-      const uploadedUrls: string[] = []
+      // Upload files to private Supabase Storage and persist storage paths.
+      const uploadedPaths: string[] = []
+      let bytesBefore = 0
+      let bytesAfter = 0
       for (const file of files) {
-        const ext = file.name.split('.').pop() ?? 'file'
-        const path = `${user.id}/${selectedPatient.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`
+        const compressed = await compressForLabUpload(file)
+        const fileToUpload = compressed.file
+        bytesBefore += compressed.originalBytes
+        bytesAfter += compressed.compressedBytes
+
+        const ext = extensionForMimeType(fileToUpload.type)
+        const path = `${user.id}/${selectedPatient.id}/${Date.now()}-${createUploadNonce()}.${ext}`
         const { error: uploadError } = await supabase.storage
           .from('lab-reports')
-          .upload(path, file, { contentType: file.type })
+          .upload(path, fileToUpload, { contentType: fileToUpload.type })
         if (uploadError) {
-          toast.error(`Failed to upload ${file.name}: ${uploadError.message}`)
+          toast.error(`Failed to upload \`${file.name}\`. Please try again.`)
           setUploading(false)
           return
         }
-        const { data: publicUrl } = supabase.storage
-          .from('lab-reports')
-          .getPublicUrl(path)
-        uploadedUrls.push(publicUrl.publicUrl)
+        uploadedPaths.push(path)
+      }
+
+      if (bytesBefore > 0 && bytesAfter < bytesBefore) {
+        const saved = Math.round(((bytesBefore - bytesAfter) / bytesBefore) * 100)
+        toast.success(`Upload optimized: ${saved}% smaller before storage save`)
       }
 
       setUploading(false)
@@ -177,17 +207,18 @@ export function UploadReportForm() {
           patient_id: selectedPatient.id,
           title: title.trim(),
           report_type: reportType || undefined,
-          file_urls: uploadedUrls,
+          file_urls: uploadedPaths,
         })
         if (result.error) {
           toast.error(result.error)
           return
         }
-        toast.success('Report uploaded successfully!')
-        router.push(`/lab-reports/${result.reportId}`)
+        toast.success('Report uploaded successfully')
+        router.push(`/patients/${selectedPatient.id}/lab-reports/${result.reportId}`)
       })
-    } catch {
-      toast.error('Upload failed')
+    } catch (error) {
+      console.error('[UploadReportForm] handleSubmit failed:', error)
+      toast.error('Failed to upload report. Please try again.')
       setUploading(false)
     }
   }
@@ -214,8 +245,16 @@ export function UploadReportForm() {
                   onFocus={() => {
                     if (searchResults.length > 0) setSearchOpen(true)
                   }}
-                  className="h-10 w-full rounded-lg border bg-background pl-9 pr-9 text-sm outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-muted-foreground"
+                  className="h-10 w-full rounded-lg border bg-background pl-9 pr-16 text-sm outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-muted-foreground"
                   autoComplete="off"
+                />
+                <ContactPickerButton
+                  className="absolute right-10 h-7 w-7 p-0"
+                  ariaLabel="Pick contact to search patient"
+                  onContactPicked={({ phone }) => {
+                    setSearchQuery(phone)
+                    setSearchOpen(false)
+                  }}
                 />
                 {searchQuery && (
                   <button
@@ -275,15 +314,17 @@ export function UploadReportForm() {
                 <span className="mx-1.5">·</span>{selectedPatient.phone}
               </p>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedPatient(null)}
-              className="shrink-0"
-            >
-              Change
-            </Button>
+            {!lockPatient && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedPatient(null)}
+                className="shrink-0"
+              >
+                Change
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
@@ -389,7 +430,7 @@ export function UploadReportForm() {
             className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
           >
             {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            Upload Report
+            {uploading ? 'Uploading…' : isPending ? 'Saving…' : 'Upload Report'}
           </Button>
           <Button
             variant="outline"

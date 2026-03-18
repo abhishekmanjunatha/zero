@@ -6,6 +6,13 @@ import type { Tables, Json } from '@/types/database'
 import type { CreateAppointmentInput } from '@/lib/validations/appointment'
 import type { DayAvailability, SlotDuration, BufferTime } from '@/types/app'
 import { generateSlots } from '@/lib/utils/slots'
+import {
+  getCurrentDateInTimeZone,
+  getCurrentTimeInTimeZone,
+  getWeekdayFromISODate,
+  isPastOrCurrentSlotForTimeZone,
+  toMinutes,
+} from '@/lib/utils/timezone'
 
 // ── Type for appointment rows with patient join ─────────────────────────────
 
@@ -30,18 +37,69 @@ export interface AppointmentWithPatient {
   }
 }
 
+type AppointmentStatus = Tables<'appointments'>['status']
+
+const STATUS_EVENT_MAP: Partial<Record<AppointmentStatus, Tables<'timeline_events'>['event_type']>> = {
+  checked_in: 'appointment_checked_in',
+  in_progress: 'appointment_in_progress',
+  completed: 'appointment_completed',
+  cancelled: 'appointment_cancelled',
+  no_show: 'appointment_no_show',
+}
+
+function canTransitionAppointment(
+  mode: Tables<'appointments'>['mode'],
+  from: AppointmentStatus,
+  to: AppointmentStatus
+): boolean {
+  if (from === to) return false
+  if (from === 'completed' || from === 'cancelled' || from === 'no_show') return false
+
+  const commonTransitions: Record<AppointmentStatus, AppointmentStatus[]> = {
+    upcoming: ['checked_in', 'in_progress', 'cancelled', 'no_show'],
+    checked_in: ['in_progress', 'cancelled', 'no_show'],
+    in_progress: ['completed', 'cancelled'],
+    completed: [],
+    cancelled: [],
+    no_show: [],
+  }
+
+  // Walk-ins should typically start directly as in_progress.
+  // We keep a permissive path for legacy rows that may still be upcoming.
+  if (mode === 'walk_in' && from === 'upcoming') {
+    return ['in_progress', 'cancelled'].includes(to)
+  }
+
+  return commonTransitions[from].includes(to)
+}
+
+async function ensurePatientOwnedByDietitian(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  dietitianId: string,
+  patientId: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('patients')
+    .select('id')
+    .eq('id', patientId)
+    .eq('dietitian_id', dietitianId)
+    .maybeSingle()
+
+  return !!data
+}
+
 // ── Get filtered appointments ──────────────────────────────────────────────
 
 export async function getAppointments(
   filter: 'today' | 'upcoming' | 'completed' = 'today'
-): Promise<AppointmentWithPatient[]> {
+): Promise<{ data: AppointmentWithPatient[]; error?: string }> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return []
+  if (!user) return { data: [] }
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getCurrentDateInTimeZone()
 
   let query = supabase
     .from('appointments')
@@ -49,19 +107,27 @@ export async function getAppointments(
     .eq('dietitian_id', user.id)
 
   if (filter === 'today') {
-    query = query.eq('appointment_date', today).neq('status', 'cancelled')
+    query = query
+      .neq('status', 'cancelled')
+      .neq('status', 'no_show')
+      .or(`appointment_date.eq.${today},status.in.(checked_in,in_progress)`)
   } else if (filter === 'upcoming') {
-    query = query.gte('appointment_date', today).eq('status', 'upcoming')
+    query = query
+      .gte('appointment_date', today)
+      .in('status', ['upcoming', 'checked_in', 'in_progress'])
   } else if (filter === 'completed') {
-    query = query.eq('status', 'completed')
+    query = query.in('status', ['completed', 'cancelled', 'no_show'])
   }
 
   const { data, error } = await query.order('appointment_date', { ascending: filter !== 'completed' })
     .order('appointment_time', { ascending: true })
 
-  if (error || !data) return []
+  if (error) {
+    console.error('[Appointments] getAppointments error:', error.message)
+    return { data: [], error: 'Failed to load appointments. Please try again.' }
+  }
 
-  return (data as unknown as Array<
+  const rows = (data as unknown as Array<
     Omit<AppointmentWithPatient, 'patient'> & {
       patients: AppointmentWithPatient['patient']
     }
@@ -69,6 +135,8 @@ export async function getAppointments(
     ...row,
     patient: row.patients,
   }))
+
+  return { data: rows }
 }
 
 // ── Get available slots for a given date ───────────────────────────────────
@@ -82,10 +150,8 @@ export async function getAvailableSlots(
   } = await supabase.auth.getUser()
   if (!user) return { slots: [], slotDuration: 30 }
 
-  // Determine day of week from the selected date
-  const dayOfWeek = new Date(date + 'T00:00:00')
-    .toLocaleDateString('en-US', { weekday: 'long' })
-    .toLowerCase() as Tables<'dietitian_availability'>['day_of_week']
+  // Determine day of week in clinic timezone so slot generation is timezone-safe.
+  const dayOfWeek = getWeekdayFromISODate(date) as Tables<'dietitian_availability'>['day_of_week']
 
   // Fetch dietitian's availability for that day
   const { data: avail } = await supabase
@@ -125,7 +191,15 @@ export async function getAvailableSlots(
     ((existing ?? []) as Array<{ appointment_time: string }>).map((a) => a.appointment_time)
   )
 
-  const available = allSlots.filter((slot) => !bookedTimes.has(slot))
+  const todayInClinicTz = getCurrentDateInTimeZone()
+  const nowInClinicMinutes = toMinutes(getCurrentTimeInTimeZone())
+
+  const available = allSlots.filter((slot) => {
+    if (bookedTimes.has(slot)) return false
+    if (date < todayInClinicTz) return false
+    if (date > todayInClinicTz) return true
+    return toMinutes(slot) > nowInClinicMinutes
+  })
 
   return { slots: available, slotDuration }
 }
@@ -141,6 +215,22 @@ export async function createAppointment(
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
+  const ownsPatient = await ensurePatientOwnedByDietitian(
+    supabase,
+    user.id,
+    input.patient_id
+  )
+  if (!ownsPatient) {
+    return { error: 'Invalid patient reference for this account.' }
+  }
+
+  if (
+    input.mode === 'scheduled' &&
+    isPastOrCurrentSlotForTimeZone(input.appointment_date, input.appointment_time)
+  ) {
+    return { error: 'Cannot create an appointment in the past. Please choose a future time.' }
+  }
+
   // Double-booking prevention: check if this slot is already taken
   const { data: clash } = await supabase
     .from('appointments')
@@ -155,6 +245,8 @@ export async function createAppointment(
     return { error: 'This time slot is already booked. Please choose another.' }
   }
 
+  const initialStatus: AppointmentStatus = input.mode === 'walk_in' ? 'in_progress' : 'upcoming'
+
   const { data, error } = await supabase
     .from('appointments')
     .insert({
@@ -165,7 +257,7 @@ export async function createAppointment(
       mode: input.mode,
       appointment_date: input.appointment_date,
       appointment_time: input.appointment_time,
-      status: 'upcoming',
+      status: initialStatus,
       notes: input.notes || null,
     })
     .select('id')
@@ -175,11 +267,8 @@ export async function createAppointment(
 
   const newId = (data as { id: string }).id
 
-  // Update patient last_visit_at
-  await supabase
-    .from('patients')
-    .update({ last_visit_at: new Date().toISOString() })
-    .eq('id', input.patient_id)
+  // NOTE: last_visit_at is updated only when appointment is marked completed,
+  // not on creation, to accurately reflect when the patient was actually seen.
 
   // Create timeline event
   await supabase.from('timeline_events').insert({
@@ -191,9 +280,26 @@ export async function createAppointment(
       date: input.appointment_date,
       time: input.appointment_time,
       mode: input.mode,
+      status: initialStatus,
     } as unknown as Json,
     reference_id: newId,
   })
+
+  if (initialStatus === 'in_progress') {
+    await supabase.from('timeline_events').insert({
+      dietitian_id: user.id,
+      patient_id: input.patient_id,
+      event_type: 'appointment_in_progress',
+      event_data: {
+        purpose: input.purpose,
+        date: input.appointment_date,
+        time: input.appointment_time,
+        mode: input.mode,
+        source: 'walk_in_auto_start',
+      } as unknown as Json,
+      reference_id: newId,
+    })
+  }
 
   revalidatePath('/appointments')
   revalidatePath('/dashboard')
@@ -206,7 +312,7 @@ export async function createAppointment(
 
 export async function updateAppointmentStatus(
   id: string,
-  status: 'in_progress' | 'completed' | 'cancelled'
+  status: 'checked_in' | 'in_progress' | 'completed' | 'cancelled' | 'no_show'
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
   const {
@@ -217,7 +323,7 @@ export async function updateAppointmentStatus(
   // Get the appointment first (for timeline)
   const { data: appt } = await supabase
     .from('appointments')
-    .select('id, patient_id, purpose, appointment_date, appointment_time')
+    .select('id, patient_id, purpose, appointment_date, appointment_time, mode, status')
     .eq('id', id)
     .eq('dietitian_id', user.id)
     .single()
@@ -226,8 +332,19 @@ export async function updateAppointmentStatus(
 
   const appointment = appt as Pick<
     Tables<'appointments'>,
-    'id' | 'patient_id' | 'purpose' | 'appointment_date' | 'appointment_time'
+    'id' | 'patient_id' | 'purpose' | 'appointment_date' | 'appointment_time' | 'mode' | 'status'
   >
+
+  if (!canTransitionAppointment(appointment.mode, appointment.status, status)) {
+    return { error: `Invalid status transition from ${appointment.status.replace('_', ' ')} to ${status.replace('_', ' ')}` }
+  }
+
+  const ownsPatient = await ensurePatientOwnedByDietitian(
+    supabase,
+    user.id,
+    appointment.patient_id
+  )
+  if (!ownsPatient) return { error: 'Invalid patient reference for this account.' }
 
   const { error } = await supabase
     .from('appointments')
@@ -237,24 +354,29 @@ export async function updateAppointmentStatus(
 
   if (error) return { error: error.message }
 
-  // Timeline event for completion
-  if (status === 'completed') {
+  const timelineEventType = STATUS_EVENT_MAP[status]
+  if (timelineEventType) {
     await supabase.from('timeline_events').insert({
       dietitian_id: user.id,
       patient_id: appointment.patient_id,
-      event_type: 'appointment_completed',
+      event_type: timelineEventType,
       event_data: {
         purpose: appointment.purpose,
         date: appointment.appointment_date,
         time: appointment.appointment_time,
+        mode: appointment.mode,
+        previous_status: appointment.status,
+        next_status: status,
       } as unknown as Json,
       reference_id: id,
     })
+  }
 
-    // Update patient last_visit_at
+  if (status === 'completed') {
+    // Update patient last_visit_at to the appointment date
     await supabase
       .from('patients')
-      .update({ last_visit_at: new Date().toISOString() })
+      .update({ last_visit_at: appointment.appointment_date })
       .eq('id', appointment.patient_id)
   }
 

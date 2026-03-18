@@ -23,6 +23,8 @@ export interface DietitianPDFData {
   clinicName: string
   address: string
   phone: string
+  email?: string
+  logoUrl?: string
 }
 
 export interface DownloadPDFInput {
@@ -30,6 +32,11 @@ export interface DownloadPDFInput {
   dietitian: DietitianPDFData
   /** The mounted preview container DOM element obtained from a React ref. */
   previewElement: HTMLElement
+}
+
+export interface GeneratedPDFResult {
+  blob: Blob
+  filename: string
 }
 
 // ── A4 page geometry (pixels at 96 dpi) ───────────────────────────────────
@@ -77,55 +84,80 @@ async function measureHtml(html: string, width: number): Promise<number> {
   return h
 }
 
+interface LayoutMetrics {
+  height: number
+  breakpoints: number[]
+}
+
 /**
- * Deep-clones el, renders it in a hidden container of the given width, and
- * returns its scrollHeight.
+ * Measures the cloned preview content and captures candidate breakpoints so
+ * long documents can flow between pages without cutting section blocks.
  */
-async function measureElement(el: HTMLElement, width: number): Promise<number> {
+async function measureElementLayout(el: HTMLElement, width: number): Promise<LayoutMetrics> {
   const wrapper = document.createElement('div')
   wrapper.style.cssText = `position:absolute;top:-99999px;left:0;width:${width}px;`
-  wrapper.appendChild(el.cloneNode(true))
+
+  const cloned = el.cloneNode(true) as HTMLElement
+  enhancePreviewClone(cloned)
+  wrapper.appendChild(cloned)
+
   document.body.appendChild(wrapper)
   await new Promise<void>((r) => setTimeout(r, 30))
-  const h = wrapper.scrollHeight
+
+  const breakpoints = Array.from(cloned.querySelectorAll<HTMLElement>('[data-pdf-block]'))
+    .map((node) => Math.max(node.offsetTop - 8, 0))
+    .filter((value, idx, arr) => idx === 0 || value !== arr[idx - 1])
+
+  const height = wrapper.scrollHeight
   document.body.removeChild(wrapper)
-  return h
+
+  return { height, breakpoints }
 }
 
 // ── Header / Footer HTML builders ─────────────────────────────────────────
 
 /** Center-aligned clinical letterhead (page 1 only). */
 function buildHeaderHTML(d: DietitianPDFData): string {
-  const rows: string[] = []
+  const safeLogo = d.logoUrl ? escapeHtml(d.logoUrl) : ''
+  const rightRows: string[] = []
+
   if (d.name) {
-    rows.push(`<div style="font-size:22px;font-weight:bold;color:#111111;margin-bottom:5px;">${escapeHtml(d.name)}</div>`)
+    rightRows.push(`<div style="font-size:24px;line-height:1.1;font-weight:800;text-transform:uppercase;color:#111111;">${escapeHtml(d.name)}</div>`)
   }
   if (d.qualification) {
-    rows.push(`<div style="font-size:13px;color:#444444;margin-bottom:3px;">${escapeHtml(d.qualification)}</div>`)
+    rightRows.push(`<div style="font-size:12px;line-height:1.2;font-weight:400;color:#202020;margin-top:2px;">${escapeHtml(d.qualification)}</div>`)
   }
   if (d.licenseNumber) {
-    rows.push(`<div style="font-size:13px;color:#555555;margin-bottom:3px;">License: ${escapeHtml(d.licenseNumber)}</div>`)
+    rightRows.push(`<div style="font-size:12px;line-height:1.2;font-weight:400;color:#202020;margin-top:1px;">License No: ${escapeHtml(d.licenseNumber)}</div>`)
   }
-  if (d.clinicName) {
-    rows.push(`<div style="font-size:13px;color:#444444;">${escapeHtml(d.clinicName)}</div>`)
+  if (d.email) {
+    rightRows.push(`<div style="font-size:12px;line-height:1.2;font-weight:400;color:#202020;margin-top:1px;">${escapeHtml(d.email)}</div>`)
   }
-  return `<div style="text-align:center;padding-bottom:14px;border-bottom:1.5px solid #555555;">${rows.join('')}</div>`
+
+  const logoColumn = safeLogo
+    ? `<div style="width:84px;height:84px;display:flex;align-items:center;justify-content:flex-start;"><img src="${safeLogo}" alt="Practice Logo" style="max-width:76px;max-height:76px;object-fit:contain;display:block;" /></div>`
+    : '<div style="width:84px;height:84px;"></div>'
+
+  return [
+    '<div style="padding-bottom:12px;">',
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">',
+    logoColumn,
+    `<div style="flex:1;text-align:right;">${rightRows.join('')}</div>`,
+    '</div>',
+    '</div>',
+  ].join('')
 }
 
 /** Center-aligned footer repeated on every page. */
 function buildFooterHTML(d: DietitianPDFData, timestamp: string): string {
   const rows: string[] = []
-  if (d.clinicName) {
-    rows.push(`<div style="font-size:13px;font-weight:600;color:#222222;margin-bottom:4px;">${escapeHtml(d.clinicName)}</div>`)
-  }
   if (d.address) {
-    rows.push(`<div style="font-size:12px;color:#555555;margin-bottom:2px;word-wrap:break-word;overflow-wrap:break-word;">Clinic Address: ${escapeHtml(d.address)}</div>`)
+    rows.push(`<div style="font-size:11px;line-height:1.35;color:#1f1f1f;font-weight:400;word-wrap:break-word;overflow-wrap:break-word;">${escapeHtml(d.address)}</div>`)
   }
-  if (d.phone) {
-    rows.push(`<div style="font-size:12px;color:#555555;margin-bottom:6px;">Phone: ${escapeHtml(d.phone)}</div>`)
-  }
-  rows.push(`<div style="font-size:11px;color:#888888;margin-top:4px;">Generated via Peepal | ${timestamp}</div>`)
-  return `<div style="border-top:1.5px solid #555555;padding-top:10px;text-align:center;">${rows.join('')}</div>`
+  rows.push(`<div style="font-size:10px;line-height:1.35;color:#2a2a2a;margin-top:4px;">Generated on ${escapeHtml(timestamp)}</div>`)
+  rows.push('<div style="font-size:10px;line-height:1.35;color:#2a2a2a;">This is a digitally created document and requires no physical signature.</div>')
+  rows.push('<div style="font-size:10px;line-height:1.35;color:#2a2a2a;font-weight:700;">Powered by Peepal</div>')
+  return `<div style="border-top:1px solid #2e2e2e;padding-top:8px;text-align:center;">${rows.join('')}</div>`
 }
 
 // ── Preview content enhancements ──────────────────────────────────────────
@@ -140,45 +172,107 @@ function buildFooterHTML(d: DietitianPDFData, timestamp: string): string {
  *   - Root font-family: Inter
  */
 function enhancePreviewClone(el: HTMLElement): void {
+  // Avoid double borders/background when each PDF page draws its own rounded container.
+  el.classList.remove('rounded-lg', 'border', 'bg-white', 'shadow-sm')
+  el.style.border = 'none'
+  el.style.borderRadius = '0'
+  el.style.backgroundColor = 'transparent'
+
   el.style.fontFamily = 'Inter,Helvetica,Arial,sans-serif'
+  el.style.color = '#111111'
+
+  el.querySelectorAll('.pdf-section').forEach((node) => {
+    const section = node as HTMLElement
+    section.style.breakInside = 'avoid'
+    section.style.pageBreakInside = 'avoid'
+    section.style.marginTop = '12px'
+    section.style.marginBottom = '0'
+  })
 
   const h2 = el.querySelector('h2') as HTMLElement | null
   if (h2) {
     h2.style.textAlign = 'center'
-    h2.style.fontWeight = 'bold'
+    h2.style.fontWeight = '700'
     h2.style.textTransform = 'uppercase'
-    h2.style.fontSize = '20px'
+    h2.style.fontSize = '19px'
     h2.style.color = '#111111'
-    h2.style.letterSpacing = '0.04em'
+    h2.style.letterSpacing = '0.03em'
     h2.style.marginTop = '8px'
-    h2.style.marginBottom = '20px'
+    h2.style.marginBottom = '16px'
   }
 
   el.querySelectorAll('h3').forEach((node) => {
     const h = node as HTMLElement
-    h.style.fontWeight = 'bold'
+    h.style.fontWeight = '700'
     h.style.textTransform = 'uppercase'
-    h.style.fontSize = '13px'
+    h.style.fontSize = '12px'
     h.style.color = '#111111'
-    h.style.letterSpacing = '0.03em'
-    h.style.marginTop = '14px'
+    h.style.letterSpacing = '0.02em'
+    h.style.marginTop = '10px'
     h.style.marginBottom = '4px'
   })
+
+  el.querySelectorAll('p').forEach((node) => {
+    const p = node as HTMLElement
+    p.style.fontSize = '12px'
+    p.style.lineHeight = '1.5'
+    if (p.classList.contains('font-bold') || p.classList.contains('font-semibold')) {
+      p.style.fontWeight = '700'
+    } else if (p.classList.contains('font-medium')) {
+      p.style.fontWeight = '500'
+    } else {
+      p.style.fontWeight = '400'
+    }
+    p.style.color = '#111111'
+    p.style.marginTop = '0'
+    p.style.marginBottom = '0'
+  })
+
+  el.querySelectorAll('.text-muted-foreground').forEach((node) => {
+    const m = node as HTMLElement
+    m.style.color = '#2f2f2f'
+  })
+}
+
+function computeSliceStarts(contentH: number, sliceHP1: number, sliceHRest: number, breakpoints: number[]): number[] {
+  if (contentH <= sliceHP1) return [0]
+
+  const starts = [0]
+  const minChunk = 120
+  let pageIndex = 0
+
+  while (true) {
+    const currentStart = starts[starts.length - 1]
+    const maxChunk = pageIndex === 0 ? sliceHP1 : sliceHRest
+    const defaultNext = currentStart + maxChunk
+
+    if (defaultNext >= contentH) break
+
+    const minAllowedBreak = currentStart + minChunk
+    const candidate = breakpoints
+      .filter((bp) => bp > minAllowedBreak && bp <= defaultNext)
+      .pop()
+
+    const nextStart = candidate ?? defaultNext
+
+    if (nextStart <= currentStart) break
+
+    starts.push(nextStart)
+    pageIndex += 1
+
+    if (starts.length > 250) break
+  }
+
+  return starts
 }
 
 // ── Main export ───────────────────────────────────────────────────────────
 
-/**
- * Builds one PDF page at a time as a fixed A4-sized off-screen DOM node,
- * captures it with html2canvas-pro, then assembles into a jsPDF document.
- *
- * Must be called from a browser environment (not during SSR).
- */
-export async function downloadDocumentAsPDF(input: DownloadPDFInput): Promise<void> {
-  if (typeof window === 'undefined') {
-    throw new Error('PDF generation is only available in the browser')
-  }
+function buildPDFFileName(docTitle: string): string {
+  return docTitle.trim().replace(/[^a-zA-Z0-9\s\-_]/g, '').replace(/\s+/g, '_') || 'document'
+}
 
+async function generateDocumentPDF(input: DownloadPDFInput): Promise<GeneratedPDFResult> {
   const { docTitle, dietitian, previewElement } = input
   const timestamp = formatTimestamp()
 
@@ -192,11 +286,12 @@ export async function downloadDocumentAsPDF(input: DownloadPDFInput): Promise<vo
   const footerHTML = buildFooterHTML(dietitian, timestamp)
 
   // Measure component heights so we can calculate content slice sizes
-  const [headerH, footerH, contentH] = await Promise.all([
+  const [headerH, footerH, contentLayout] = await Promise.all([
     measureHtml(headerHTML, CONTENT_W),
     measureHtml(footerHTML, CONTENT_W),
-    measureElement(previewElement, CONTENT_W),
+    measureElementLayout(previewElement, CONTENT_W),
   ])
+  const contentH = contentLayout.height
 
   // Pixel positions (from page top) for content area boundaries
   const HEADER_GAP = 14   // vertical gap between header divider and first content line
@@ -209,10 +304,8 @@ export async function downloadDocumentAsPDF(input: DownloadPDFInput): Promise<vo
   const sliceHP1   = Math.max(footerTopPx - FOOTER_GAP - contentTopP1, 80)
   const sliceHRest = Math.max(footerTopPx - FOOTER_GAP - contentTopRest, 80)
 
-  const totalPages =
-    contentH <= sliceHP1
-      ? 1
-      : 1 + Math.ceil((contentH - sliceHP1) / sliceHRest)
+  const sliceStarts = computeSliceStarts(contentH, sliceHP1, sliceHRest, contentLayout.breakpoints)
+  const totalPages = sliceStarts.length
 
   const pdf  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const pdfW = pdf.internal.pageSize.getWidth()   // 210 mm
@@ -220,7 +313,7 @@ export async function downloadDocumentAsPDF(input: DownloadPDFInput): Promise<vo
 
   for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
     // How many pixels of content have already been shown on previous pages
-    const sliceOffset = pageIdx === 0 ? 0 : sliceHP1 + (pageIdx - 1) * sliceHRest
+    const sliceOffset = sliceStarts[pageIdx] ?? 0
     const contentTop  = pageIdx === 0 ? contentTopP1 : contentTopRest
     const clipH       = Math.max(footerTopPx - FOOTER_GAP - contentTop, 50)
 
@@ -255,6 +348,10 @@ export async function downloadDocumentAsPDF(input: DownloadPDFInput): Promise<vo
       `right:${MARGIN_X}px`,
       `height:${clipH}px`,
       'overflow:hidden',
+      'border:1px solid #e5e7eb',
+      'border-radius:10px',
+      'background:#ffffff',
+      'box-sizing:border-box',
     ].join(';')
 
     // Inner wrapper: translated up by sliceOffset to expose the correct slice
@@ -290,15 +387,47 @@ export async function downloadDocumentAsPDF(input: DownloadPDFInput): Promise<vo
       })
 
       if (pageIdx > 0) pdf.addPage()
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pdfW, pdfH)
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.82), 'JPEG', 0, 0, pdfW, pdfH)
     } finally {
       document.body.removeChild(pageDiv)
     }
   }
 
-  const filename =
-    docTitle.trim().replace(/[^a-zA-Z0-9\s\-_]/g, '').replace(/\s+/g, '_') || 'document'
-  pdf.save(`${filename}.pdf`)
+  const filename = buildPDFFileName(docTitle)
+  return { blob: pdf.output('blob'), filename }
+}
+
+/**
+ * Builds one PDF page at a time as a fixed A4-sized off-screen DOM node,
+ * captures it with html2canvas-pro, then assembles into a jsPDF document.
+ *
+ * Must be called from a browser environment (not during SSR).
+ */
+export async function downloadDocumentAsPDF(input: DownloadPDFInput): Promise<void> {
+  if (typeof window === 'undefined') {
+    throw new Error('PDF generation is only available in the browser')
+  }
+
+  const { blob, filename } = await generateDocumentPDF(input)
+  const objectUrl = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = objectUrl
+  anchor.download = `${filename}.pdf`
+  document.body.appendChild(anchor)
+  anchor.click()
+  document.body.removeChild(anchor)
+  URL.revokeObjectURL(objectUrl)
+}
+
+/**
+ * Generates the PDF and returns a Blob for upload workflows.
+ * Must be called from a browser environment (not during SSR).
+ */
+export async function generateDocumentAsPDFBlob(input: DownloadPDFInput): Promise<GeneratedPDFResult> {
+  if (typeof window === 'undefined') {
+    throw new Error('PDF generation is only available in the browser')
+  }
+  return generateDocumentPDF(input)
 }
 
 

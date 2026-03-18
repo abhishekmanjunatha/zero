@@ -6,9 +6,7 @@ import {
   LayoutDashboard,
   Users,
   CalendarDays,
-  FileText,
-  FlaskConical,
-  FolderOpen,
+  ClipboardList,
   Settings,
   Leaf,
 } from 'lucide-react'
@@ -18,22 +16,20 @@ const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/patients', label: 'Patients', icon: Users },
   { href: '/appointments', label: 'Appointments', icon: CalendarDays },
-  { href: '/clinical-notes', label: 'Clinical Notes', icon: FileText },
-  { href: '/lab-reports', label: 'Lab Reports', icon: FlaskConical },
-  { href: '/documents', label: 'Documents', icon: FolderOpen },
+  { href: '/templates', label: 'Templates', icon: ClipboardList },
 ]
 
 export function AppSidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="hidden lg:flex flex-col w-60 min-h-screen border-r bg-card shrink-0">
+    <aside className="hidden lg:flex flex-col w-64 min-h-screen border-r border-border/60 bg-sidebar/90 backdrop-blur-md shrink-0">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 py-5 border-b">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600">
+      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-border/60">
+        <div className="flex h-9 w-9 items-center justify-center rounded-2xl clay-button-primary">
           <Leaf className="h-4 w-4 text-white" />
         </div>
-        <span className="text-xl font-semibold tracking-tight">peepal</span>
+        <span className="text-xl font-semibold tracking-tight">Zero</span>
       </div>
 
       {/* Nav */}
@@ -47,11 +43,11 @@ export function AppSidebar() {
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  ? 'clay-pill text-primary'
+                  : 'text-muted-foreground hover:bg-muted/65 hover:text-foreground'
               )}
             >
-              <Icon className={cn('h-4 w-4 shrink-0', isActive && 'text-emerald-600')} />
+              <Icon className={cn('h-4 w-4 shrink-0', isActive && 'text-primary')} />
               {label}
             </Link>
           )
@@ -59,14 +55,14 @@ export function AppSidebar() {
       </nav>
 
       {/* Bottom: Settings */}
-      <div className="px-3 pb-4 border-t pt-3">
+      <div className="px-3 pb-4 border-t border-border/60 pt-3">
         <Link
           href="/profile"
           className={cn(
             'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
             pathname === '/profile'
-              ? 'bg-emerald-50 text-emerald-700'
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              ? 'clay-pill text-primary'
+              : 'text-muted-foreground hover:bg-muted/65 hover:text-foreground'
           )}
         >
           <Settings className="h-4 w-4 shrink-0" />

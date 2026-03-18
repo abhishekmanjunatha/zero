@@ -4,7 +4,7 @@ import { useState, useTransition, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
-import { Camera, Loader2, Upload } from 'lucide-react'
+import { Loader2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ContactPickerButton } from '@/components/shared/contact-picker-button'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { basicProfileSchema, type BasicProfileInput } from '@/lib/validations/onboarding'
 import { saveBasicProfile } from '@/actions/onboarding'
@@ -41,6 +42,7 @@ export function BasicProfileForm({ defaultValues, userId }: BasicProfileFormProp
     handleSubmit,
     setValue,
     setError,
+    getValues,
     formState: { errors },
   } = useForm<BasicProfileInput>({
     resolver: zodResolver(basicProfileSchema),
@@ -178,7 +180,19 @@ export function BasicProfileForm({ defaultValues, userId }: BasicProfileFormProp
 
         {/* Phone */}
         <div className="space-y-1.5">
-          <Label htmlFor="phone">Phone Number <span className="text-destructive">*</span></Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="phone">Phone Number <span className="text-destructive">*</span></Label>
+            <ContactPickerButton
+              className="h-8 px-2"
+              ariaLabel="Pick profile contact"
+              onContactPicked={({ displayName, phone }) => {
+                setValue('phone', phone, { shouldDirty: true, shouldValidate: true })
+                if (!getValues('full_name')?.trim()) {
+                  setValue('full_name', displayName, { shouldDirty: true, shouldValidate: true })
+                }
+              }}
+            />
+          </div>
           <Input id="phone" type="tel" placeholder="+91 98765 43210" {...register('phone')} />
           {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
         </div>

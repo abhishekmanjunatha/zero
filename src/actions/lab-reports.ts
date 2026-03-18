@@ -1,19 +1,35 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
 import type { Tables, Json } from '@/types/database'
 import { UPLOAD_TOKEN_EXPIRY_HOURS } from '@/lib/constants/app'
+
+async function ensurePatientOwnedByDietitian(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  dietitianId: string,
+  patientId: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('patients')
+    .select('id')
+    .eq('id', patientId)
+    .eq('dietitian_id', dietitianId)
+    .maybeSingle()
+
+  return !!data
+}
 
 // ── Get lab reports (optionally filtered by patient) ────────────────────────
 
 export async function getLabReports(
   patientId?: string
-): Promise<(Tables<'lab_reports'> & { patient?: { id: string; full_name: string; patient_code: string } })[]> {
+): Promise<{ data: (Tables<'lab_reports'> & { patient?: { id: string; full_name: string; patient_code: string } })[]; error?: string }> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return []
+  if (!user) return { data: [] }
 
   let query = supabase
     .from('lab_reports')
@@ -25,16 +41,21 @@ export async function getLabReports(
     query = query.eq('patient_id', patientId)
   }
 
-  const { data } = await query
+  const { data, error } = await query
 
-  return (
-    (data as (Tables<'lab_reports'> & {
+  if (error) {
+    console.error('[LabReports] getLabReports error:', error.message)
+    return { data: [], error: 'Failed to load lab reports. Please try again.' }
+  }
+
+  return {
+    data: (data as (Tables<'lab_reports'> & {
       patients: { id: string; full_name: string; patient_code: string }
     })[] | null)?.map((r) => ({
       ...r,
       patient: r.patients,
-    })) ?? []
-  )
+    })) ?? [],
+  }
 }
 
 // ── Get a single lab report ─────────────────────────────────────────────────
@@ -48,19 +69,49 @@ export async function getLabReport(
   } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data } = await supabase
+  const { data, error: fetchError } = await supabase
     .from('lab_reports')
     .select('*, patients!inner(id, full_name, patient_code)')
     .eq('id', reportId)
     .eq('dietitian_id', user.id)
     .single()
 
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    console.error('[LabReports] getLabReport error:', fetchError.message)
+  }
+
   if (!data) return null
 
   const row = data as Tables<'lab_reports'> & {
     patients: { id: string; full_name: string; patient_code: string }
   }
-  return { ...row, patient: row.patients }
+
+  const rawPaths = Array.isArray(row.file_urls)
+    ? row.file_urls.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    : []
+  const remoteUrls = rawPaths.filter((value) => /^https?:\/\//i.test(value))
+  const privatePaths = rawPaths.filter((value) => !/^https?:\/\//i.test(value))
+
+  let signedUrls: string[] = []
+  if (privatePaths.length > 0) {
+    const { data: signed, error: signError } = await supabase.storage
+      .from('lab-reports')
+      .createSignedUrls(privatePaths, 60 * 60)
+
+    if (signError) {
+      console.error('[LabReports] getLabReport signed URL error:', signError.message)
+    } else {
+      signedUrls = (signed ?? [])
+        .map((entry) => entry.signedUrl)
+        .filter((url): url is string => typeof url === 'string' && url.length > 0)
+    }
+  }
+
+  return {
+    ...row,
+    file_urls: [...remoteUrls, ...signedUrls],
+    patient: row.patients,
+  }
 }
 
 // ── Upload lab report (dietitian) ───────────────────────────────────────────
@@ -76,6 +127,15 @@ export async function uploadLabReport(input: {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
+
+  const ownsPatient = await ensurePatientOwnedByDietitian(
+    supabase,
+    user.id,
+    input.patient_id
+  )
+  if (!ownsPatient) {
+    return { error: 'Invalid patient reference for this account.' }
+  }
 
   if (!input.title.trim()) return { error: 'Report title is required' }
   if (input.file_urls.length === 0) return { error: 'At least one file is required' }
@@ -100,7 +160,7 @@ export async function uploadLabReport(input: {
   const reportId = (data as { id: string }).id
 
   // Timeline event
-  await supabase.from('timeline_events').insert({
+  const { error: timelineError } = await supabase.from('timeline_events').insert({
     dietitian_id: user.id,
     patient_id: input.patient_id,
     event_type: 'lab_report_uploaded',
@@ -111,6 +171,14 @@ export async function uploadLabReport(input: {
     } as unknown as Json,
     reference_id: reportId,
   })
+
+  if (timelineError) {
+    console.error('[LabReports] uploadLabReport timeline insert error:', timelineError.message)
+  }
+
+  revalidatePath('/lab-reports')
+  revalidatePath('/dashboard')
+  revalidatePath(`/patients/${input.patient_id}`)
 
   return { reportId }
 }
@@ -125,6 +193,15 @@ export async function generateSecureUploadToken(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
+
+  const ownsPatient = await ensurePatientOwnedByDietitian(
+    supabase,
+    user.id,
+    patientId
+  )
+  if (!ownsPatient) {
+    return { error: 'Invalid patient reference for this account.' }
+  }
 
   // Generate a secure random token
   const tokenBytes = new Uint8Array(32)
@@ -156,6 +233,10 @@ export async function generateSecureUploadToken(
     return { error: error?.message ?? 'Failed to generate token' }
   }
 
+  revalidatePath('/lab-reports')
+  revalidatePath('/dashboard')
+  revalidatePath(`/patients/${patientId}`)
+
   return { token, expiresAt }
 }
 
@@ -164,7 +245,7 @@ export async function generateSecureUploadToken(
 export async function saveAiAnalysis(
   reportId: string,
   summary: string,
-  observations: Record<string, unknown>[]
+  analysis: { metrics: unknown[]; observations: unknown[] }
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
   const {
@@ -172,16 +253,33 @@ export async function saveAiAnalysis(
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
+  const { data: reportRow } = await supabase
+    .from('lab_reports')
+    .select('patient_id')
+    .eq('id', reportId)
+    .eq('dietitian_id', user.id)
+    .maybeSingle()
+
+  if (!reportRow) return { error: 'Lab report not found' }
+
   const { error } = await supabase
     .from('lab_reports')
     .update({
       ai_summary: summary,
-      ai_observations: observations as unknown as Json,
+      ai_observations: {
+        metrics: analysis.metrics,
+        observations: analysis.observations,
+      } as unknown as Json,
     })
     .eq('id', reportId)
     .eq('dietitian_id', user.id)
 
   if (error) return { error: error.message }
+
+  revalidatePath('/lab-reports')
+  revalidatePath('/dashboard')
+  revalidatePath(`/patients/${(reportRow as { patient_id: string }).patient_id}`)
+
   return {}
 }
 
@@ -196,6 +294,15 @@ export async function deleteLabReport(
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
+  const { data: reportRow } = await supabase
+    .from('lab_reports')
+    .select('patient_id')
+    .eq('id', reportId)
+    .eq('dietitian_id', user.id)
+    .maybeSingle()
+
+  if (!reportRow) return { error: 'Lab report not found' }
+
   const { error } = await supabase
     .from('lab_reports')
     .delete()
@@ -203,5 +310,10 @@ export async function deleteLabReport(
     .eq('dietitian_id', user.id)
 
   if (error) return { error: error.message }
+
+  revalidatePath('/lab-reports')
+  revalidatePath('/dashboard')
+  revalidatePath(`/patients/${(reportRow as { patient_id: string }).patient_id}`)
+
   return {}
 }

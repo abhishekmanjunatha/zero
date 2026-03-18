@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { BasicProfileInput } from '@/lib/validations/onboarding'
 import type { ProfessionalInput } from '@/lib/validations/onboarding'
@@ -42,6 +43,8 @@ export async function saveBasicProfile(data: BasicProfileInput) {
     .eq('id', user.id)
 
   if (error) return { error: error.message }
+  revalidatePath('/onboarding')
+  revalidatePath('/dashboard')
   return { success: true }
 }
 
@@ -76,6 +79,8 @@ export async function saveProfessionalDetails(data: ProfessionalInput) {
     .update({ onboarding_step: Math.max(current?.onboarding_step ?? 0, 2) })
     .eq('id', user.id)
 
+  revalidatePath('/onboarding')
+  revalidatePath('/dashboard')
   return { success: true }
 }
 
@@ -90,22 +95,34 @@ export async function savePracticeDetails(data: PracticeInput) {
     .eq('id', user.id)
     .single()
 
-  const { error: upsertError } = await supabase.from('dietitian_practice').upsert(
-    {
-      dietitian_id: user.id,
-      practice_type: data.practice_type,
-      clinic_name: data.clinic_name || null,
-      practice_address: data.practice_address || null,
-      city: data.city,
-      state: data.state,
-      pincode: data.pincode,
-      online_consultation_fee: data.online_consultation_fee ?? 0,
-      clinic_consultation_fee: data.clinic_consultation_fee ?? 0,
-      consultation_duration: data.consultation_duration,
-      languages: data.languages,
-    },
-    { onConflict: 'dietitian_id' }
-  )
+  const payload = {
+    dietitian_id: user.id,
+    practice_type: data.practice_type,
+    clinic_name: data.clinic_name || null,
+    logo_url: data.logo_url || null,
+    practice_address: data.practice_address || null,
+    city: data.city,
+    state: data.state,
+    pincode: data.pincode,
+    online_consultation_fee: data.online_consultation_fee ?? 0,
+    clinic_consultation_fee: data.clinic_consultation_fee ?? 0,
+    consultation_duration: data.consultation_duration,
+    languages: data.languages,
+  }
+
+  let upsertError = (await supabase.from('dietitian_practice').upsert(payload, {
+    onConflict: 'dietitian_id',
+  })).error
+
+  // Temporary fallback for cases where DB schema migration is applied but
+  // PostgREST schema cache has not refreshed yet.
+  if (upsertError?.message?.includes('logo_url')) {
+    const { logo_url: _logoUrl, ...payloadWithoutLogo } = payload
+    void _logoUrl
+    upsertError = (await supabase.from('dietitian_practice').upsert(payloadWithoutLogo, {
+      onConflict: 'dietitian_id',
+    })).error
+  }
 
   if (upsertError) return { error: upsertError.message }
 
@@ -114,6 +131,8 @@ export async function savePracticeDetails(data: PracticeInput) {
     .update({ onboarding_step: Math.max(current?.onboarding_step ?? 0, 3) })
     .eq('id', user.id)
 
+  revalidatePath('/onboarding')
+  revalidatePath('/dashboard')
   return { success: true }
 }
 
@@ -149,6 +168,8 @@ export async function saveAvailability(data: AvailabilityInput) {
     .update({ onboarding_step: Math.max(current?.onboarding_step ?? 0, 4) })
     .eq('id', user.id)
 
+  revalidatePath('/onboarding')
+  revalidatePath('/dashboard')
   return { success: true }
 }
 
@@ -163,6 +184,8 @@ export async function completeOnboarding() {
     .eq('id', user.id)
 
   if (error) return { error: error.message }
+  revalidatePath('/onboarding')
+  revalidatePath('/dashboard')
   redirect('/dashboard')
 }
 

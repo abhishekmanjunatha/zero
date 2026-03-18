@@ -10,17 +10,19 @@ interface PatientsPageProps {
 
 export default async function PatientsPage({ searchParams }: PatientsPageProps) {
   const { q } = await searchParams
-  const patients = await getPatients(q)
+  const { data: patients, error: fetchError } = await getPatients(q)
 
   return (
     <div className="space-y-6 max-w-5xl">
       <div>
         <h1 className="text-xl font-semibold">Patients</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {patients.length} patient{patients.length !== 1 ? 's' : ''} total
-        </p>
+        {!fetchError && (
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {patients.length} patient{patients.length !== 1 ? 's' : ''} total
+          </p>
+        )}
       </div>
-      <PatientsList patients={patients} searchQuery={q ?? ''} />
+      <PatientsList patients={patients} searchQuery={q ?? ''} fetchError={fetchError} />
     </div>
   )
 }

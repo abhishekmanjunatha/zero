@@ -1,6 +1,6 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useTransition, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
@@ -20,12 +20,14 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { practiceSchema, type PracticeInput } from '@/lib/validations/onboarding'
 import { INDIAN_STATES, LANGUAGES } from '@/lib/constants/india'
 import { CONSULTATION_DURATIONS } from '@/lib/constants/app'
 import { savePracticeDetails } from '@/actions/onboarding'
-import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { compressForLogoUpload } from '@/lib/utils/file-compression'
 
 const PRACTICE_TYPES = [
   {
@@ -49,15 +51,19 @@ const PRACTICE_TYPES = [
 ]
 
 interface PracticeFormProps {
+  dietitianId: string
   defaultValues?: Partial<PracticeInput>
 }
 
-export function PracticeForm({ defaultValues }: PracticeFormProps) {
+export function PracticeForm({ dietitianId, defaultValues }: PracticeFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(
     defaultValues?.languages ?? []
   )
+  const [logoUrl, setLogoUrl] = useState(defaultValues?.logo_url ?? '')
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+  const logoInputRef = useRef<HTMLInputElement>(null)
 
   const {
     register,
@@ -71,6 +77,7 @@ export function PracticeForm({ defaultValues }: PracticeFormProps) {
     defaultValues: {
       practice_type: defaultValues?.practice_type,
       clinic_name: defaultValues?.clinic_name ?? '',
+      logo_url: defaultValues?.logo_url ?? '',
       practice_address: defaultValues?.practice_address ?? '',
       city: defaultValues?.city ?? '',
       state: defaultValues?.state ?? '',
@@ -94,9 +101,50 @@ export function PracticeForm({ defaultValues }: PracticeFormProps) {
     setValue('languages', next)
   }
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const allowed = ['image/jpeg', 'image/png']
+    if (!allowed.includes(file.type)) {
+      toast.error('Only JPG or PNG images are allowed')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Logo must be under 2 MB')
+      return
+    }
+
+    setIsUploadingLogo(true)
+    try {
+      const compressed = await compressForLogoUpload(file)
+      if (compressed.file.size > 2 * 1024 * 1024) {
+        toast.error('Compressed logo is still above 2 MB. Please use a smaller image.')
+        return
+      }
+
+      const supabase = createClient()
+      const path = `${dietitianId}/practice-logo.jpg`
+      const { error } = await supabase.storage.from('avatars').upload(path, compressed.file, { upsert: true })
+      if (error) {
+        toast.error('Logo upload failed: ' + error.message)
+        return
+      }
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+      const url = `${urlData.publicUrl}?t=${Date.now()}`
+      setLogoUrl(url)
+      setValue('logo_url', url)
+      toast.success('Practice logo uploaded')
+    } finally {
+      setIsUploadingLogo(false)
+      if (logoInputRef.current) logoInputRef.current.value = ''
+    }
+  }
+
   const onSubmit = (data: PracticeInput, action: 'continue' | 'draft') => {
     startTransition(async () => {
-      const result = await savePracticeDetails({ ...data, languages: selectedLanguages })
+      const result = await savePracticeDetails({ ...data, logo_url: logoUrl, languages: selectedLanguages })
       if (result?.error) {
         setError('root', { message: result.error })
         return
@@ -174,6 +222,42 @@ export function PracticeForm({ defaultValues }: PracticeFormProps) {
                 {errors.clinic_name && (
                   <p className="text-xs text-destructive">{errors.clinic_name.message}</p>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Practice Logo</Label>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Avatar className="h-14 w-14 rounded-md border">
+                      <AvatarImage src={logoUrl} alt="Practice logo" className="object-contain p-1" />
+                      <AvatarFallback className="rounded-md text-xs">Logo</AvatarFallback>
+                    </Avatar>
+                    {isUploadingLogo && (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-md bg-black/35">
+                        <Loader2 className="h-4 w-4 text-white animate-spin" />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png"
+                      className="hidden"
+                      onChange={handleLogoUpload}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={isUploadingLogo}
+                    >
+                      {isUploadingLogo ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Uploading…</> : 'Upload Logo'}
+                    </Button>
+                    <p className="mt-1 text-xs text-muted-foreground">JPG or PNG · Max 2 MB · Auto-compressed</p>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-1.5">

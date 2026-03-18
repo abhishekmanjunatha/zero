@@ -9,16 +9,19 @@ import {
   CheckCircle2,
   AlertCircle,
   FlaskConical,
+  Clock,
+  Ban,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { compressForLabUpload } from '@/lib/utils/file-compression'
 
 interface PatientUploadFormProps {
   token: string
 }
 
-type PageState = 'loading' | 'ready' | 'uploading' | 'success' | 'error'
+type PageState = 'loading' | 'ready' | 'uploading' | 'success' | 'invalid' | 'expired' | 'used' | 'error'
 
 export function PatientUploadForm({ token }: PatientUploadFormProps) {
   const [state, setState] = useState<PageState>('loading')
@@ -34,14 +37,22 @@ export function PatientUploadForm({ token }: PatientUploadFormProps) {
         const res = await fetch(`/api/upload/secure-token?token=${encodeURIComponent(token)}`)
         const data = (await res.json()) as { patientName?: string; error?: string }
         if (!res.ok || data.error) {
-          setErrorMessage(data.error ?? 'Invalid link')
-          setState('error')
+          if (res.status === 410) {
+            setState('expired')
+          } else if (res.status === 409) {
+            setState('used')
+          } else if (res.status >= 500) {
+            setErrorMessage(data.error ?? 'Upload service is temporarily unavailable. Please try again later.')
+            setState('error')
+          } else {
+            setState('invalid')
+          }
           return
         }
         setPatientName(data.patientName ?? '')
         setState('ready')
       } catch {
-        setErrorMessage('Failed to validate link')
+        setErrorMessage('Unable to validate this upload link right now. Please try again later.')
         setState('error')
       }
     }
@@ -70,21 +81,49 @@ export function PatientUploadForm({ token }: PatientUploadFormProps) {
     setState('uploading')
 
     try {
-      // Upload files (using public URLs — in production you'd use a presigned upload)
-      // For now we'll use the secure-token POST endpoint with base64 or urls
-      // In a real implementation, files would go to a public upload endpoint
-      // Here we'll read files and convert to data URLs for the AI, and store placeholder URLs
-      const fileUrls: string[] = []
+      // Upload each file to the secure server-side endpoint.
+      // The server validates the token and writes to Supabase Storage.
+      const uploadedPaths: string[] = []
+      let bytesBefore = 0
+      let bytesAfter = 0
       for (const file of files) {
-        // Create a placeholder URL — in production this would be a Supabase Storage upload
-        fileUrls.push(`pending-upload://${file.name}`)
+        const compressed = await compressForLabUpload(file)
+        const fileToUpload = compressed.file
+        bytesBefore += compressed.originalBytes
+        bytesAfter += compressed.compressedBytes
+
+        const fileFormData = new FormData()
+        fileFormData.append('token', token)
+        fileFormData.append('file', fileToUpload)
+
+        const uploadRes = await fetch('/api/upload/lab-file', {
+          method: 'POST',
+          body: fileFormData,
+        })
+
+        const uploadData = (await uploadRes.json()) as { filePath?: string; error?: string }
+
+        if (!uploadRes.ok || !uploadData.filePath) {
+          setErrorMessage(uploadData.error ?? 'File upload failed. Please try again.')
+          setState('error')
+          return
+        }
+
+        uploadedPaths.push(uploadData.filePath)
       }
 
+      if (bytesBefore > 0 && bytesAfter < bytesBefore) {
+        const saved = Math.round(((bytesBefore - bytesAfter) / bytesBefore) * 100)
+        setErrorMessage('')
+        console.info(`[PatientUpload] Files optimized by ${saved}% before upload`)
+      }
+
+      // Save the real URLs back to the report record (consuming the token)
       const res = await fetch(`/api/upload/secure-token?token=${encodeURIComponent(token)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          file_urls: fileUrls,
+          file_paths: uploadedPaths,
           title: title.trim() || 'Patient Upload',
         }),
       })
@@ -113,7 +152,52 @@ export function PatientUploadForm({ token }: PatientUploadFormProps) {
     )
   }
 
-  // ── Error ──
+  // ── Invalid token ──
+  if (state === 'invalid') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 gap-4 max-w-md mx-auto text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
+          <Ban className="h-7 w-7 text-red-500" />
+        </div>
+        <h1 className="text-xl font-bold">Invalid upload link</h1>
+        <p className="text-sm text-muted-foreground">
+          This link is not valid. Please check the URL or ask your dietitian to send a new one.
+        </p>
+      </div>
+    )
+  }
+
+  // ── Expired token ──
+  if (state === 'expired') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 gap-4 max-w-md mx-auto text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-50">
+          <Clock className="h-7 w-7 text-amber-500" />
+        </div>
+        <h1 className="text-xl font-bold">This upload link has expired</h1>
+        <p className="text-sm text-muted-foreground">
+          Upload links expire after 48 hours. Please contact your dietitian to receive a new link.
+        </p>
+      </div>
+    )
+  }
+
+  // ── Already used ──
+  if (state === 'used') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 gap-4 max-w-md mx-auto text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
+          <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+        </div>
+        <h1 className="text-xl font-bold">This upload link has already been used</h1>
+        <p className="text-sm text-muted-foreground">
+          A report was already submitted via this link. If you need to re-submit, please contact your dietitian.
+        </p>
+      </div>
+    )
+  }
+
+  // ── Upload error (post-submit failure) ──
   if (state === 'error') {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 gap-4 max-w-md mx-auto text-center">

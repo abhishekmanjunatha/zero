@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { VerifyEmailContent } from './verify-email-content'
 
-export const metadata: Metadata = { title: 'Verify Email — peepal' }
+export const metadata: Metadata = { title: 'Verify Email — Zero' }
 
 export default async function VerifyEmailPage({
   searchParams,

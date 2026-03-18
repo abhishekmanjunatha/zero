@@ -13,8 +13,6 @@ import {
   Clock,
   Loader2,
   CheckCircle2,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -29,7 +27,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { useDebounce } from '@/hooks/use-debounce'
 import { createClient } from '@/lib/supabase/client'
@@ -38,8 +42,12 @@ import {
   type CreateAppointmentInput,
 } from '@/lib/validations/appointment'
 import { createAppointment, getAvailableSlots } from '@/actions/appointments'
-import { createPatient } from '@/actions/patients'
 import { PatientForm } from '@/components/patients/patient-form'
+import { ContactPickerButton } from '@/components/shared/contact-picker-button'
+import {
+  getCurrentDateInTimeZone,
+  getCurrentTimeInTimeZone,
+} from '@/lib/utils/timezone'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -69,13 +77,15 @@ export function CreateAppointmentForm() {
   // Selected patient
   const [selectedPatient, setSelectedPatient] = useState<PatientResult | null>(null)
 
-  // Inline patient creation
-  const [showInlineCreate, setShowInlineCreate] = useState(false)
+  // Patient creation dialog (renders in a portal, avoids nested form structure)
+  const [showCreatePatientDialog, setShowCreatePatientDialog] = useState(false)
 
   // Slot state
   const [availableSlots, setAvailableSlots] = useState<string[]>([])
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [slotDuration, setSlotDuration] = useState(30)
+
+  const clinicToday = useMemo(() => getCurrentDateInTimeZone(), [])
 
   const {
     register,
@@ -83,7 +93,6 @@ export function CreateAppointmentForm() {
     control,
     watch,
     setValue,
-    setError,
     formState: { errors },
   } = useForm<CreateAppointmentInput>({
     resolver: zodResolver(createAppointmentSchema),
@@ -91,7 +100,7 @@ export function CreateAppointmentForm() {
       patient_id: preselectedPatientId ?? '',
       purpose: undefined,
       mode: undefined,
-      appointment_date: new Date().toISOString().split('T')[0],
+      appointment_date: clinicToday,
       appointment_time: '',
       notes: '',
     },
@@ -174,7 +183,7 @@ export function CreateAppointmentForm() {
     setValue('patient_id', patient.id)
     setSearchQuery('')
     setSearchOpen(false)
-    setShowInlineCreate(false)
+    setShowCreatePatientDialog(false)
   }
 
   // ── Inline patient created ───────────────────────────────────────────
@@ -188,7 +197,7 @@ export function CreateAppointmentForm() {
     if (data) {
       handleSelectPatient(data as PatientResult)
     }
-    setShowInlineCreate(false)
+    setShowCreatePatientDialog(false)
   }
 
   // ── Change patient ───────────────────────────────────────────────────
@@ -208,11 +217,8 @@ export function CreateAppointmentForm() {
   // ── Walk-in: auto-fill date/time ─────────────────────────────────────
   useEffect(() => {
     if (watchMode === 'walk_in') {
-      const now = new Date()
-      setValue('appointment_date', now.toISOString().split('T')[0])
-      const hh = String(now.getHours()).padStart(2, '0')
-      const mm = String(now.getMinutes()).padStart(2, '0')
-      setValue('appointment_time', `${hh}:${mm}`)
+      setValue('appointment_date', getCurrentDateInTimeZone())
+      setValue('appointment_time', getCurrentTimeInTimeZone())
     }
   }, [watchMode, setValue])
 
@@ -224,7 +230,7 @@ export function CreateAppointmentForm() {
         toast.error(result.error)
         return
       }
-      toast.success('Appointment created!')
+      toast.success('Appointment created successfully')
       router.push('/appointments')
     })
   }
@@ -260,8 +266,16 @@ export function CreateAppointmentForm() {
                   onFocus={() => {
                     if (searchResults.length > 0) setSearchOpen(true)
                   }}
-                  className="h-10 w-full rounded-lg border bg-background pl-9 pr-9 text-sm outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-muted-foreground"
+                  className="h-11 w-full rounded-2xl border bg-background pl-9 pr-16 text-sm outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted-foreground"
                   autoComplete="off"
+                />
+                <ContactPickerButton
+                  className="absolute right-10 h-7 w-7 p-0"
+                  ariaLabel="Pick contact to search patient"
+                  onContactPicked={({ phone }) => {
+                    setSearchQuery(phone)
+                    setSearchOpen(false)
+                  }}
                 />
                 {searchQuery && (
                   <button
@@ -312,37 +326,18 @@ export function CreateAppointmentForm() {
             </div>
 
             {/* Add New Patient button */}
-            {!showInlineCreate && (
-              <Button
-                type="button"
-                variant="outline"
-                className="gap-2"
-                onClick={() => {
-                  setShowInlineCreate(true)
-                  setSearchOpen(false)
-                }}
-              >
-                <UserPlus className="h-4 w-4" />
-                + Add New Patient
-              </Button>
-            )}
-
-            {/* Section 2: Inline Patient Creation */}
-            {showInlineCreate && (
-              <div className="border rounded-xl p-5 space-y-4 bg-muted/20">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Create New Patient</h3>
-                  <button
-                    type="button"
-                    onClick={() => setShowInlineCreate(false)}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <PatientForm mode="create" onSuccess={handleInlinePatientCreated} />
-              </div>
-            )}
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              onClick={() => {
+                setShowCreatePatientDialog(true)
+                setSearchOpen(false)
+              }}
+            >
+              <UserPlus className="h-4 w-4" />
+              + Add New Patient
+            </Button>
 
             {errors.patient_id && (
               <p className="text-xs text-destructive">{errors.patient_id.message}</p>
@@ -357,7 +352,7 @@ export function CreateAppointmentForm() {
       {selectedPatient && (
         <Card>
           <CardContent className="flex items-center gap-4 py-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
               <User className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
@@ -456,9 +451,9 @@ export function CreateAppointmentForm() {
                           type="button"
                           onClick={() => field.onChange(opt.value)}
                           className={cn(
-                            'flex-1 rounded-xl border p-4 text-left transition-all hover:border-emerald-400',
+                            'flex-1 rounded-2xl border p-4 text-left transition-all hover:border-primary/60',
                             field.value === opt.value
-                              ? 'border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600'
+                              ? 'border-primary bg-primary/10 ring-1 ring-primary'
                               : 'border-border'
                           )}
                         >
@@ -483,7 +478,7 @@ export function CreateAppointmentForm() {
                   <Input
                     id="appointment_date"
                     type="date"
-                    min={new Date().toISOString().split('T')[0]}
+                    min={clinicToday}
                     {...register('appointment_date')}
                   />
                   {errors.appointment_date && (
@@ -524,10 +519,10 @@ export function CreateAppointmentForm() {
                         type="button"
                         onClick={() => setValue('appointment_time', slot)}
                         className={cn(
-                          'rounded-lg border px-3.5 py-2 text-sm font-medium transition-all',
+                          'rounded-xl border px-3.5 py-2.5 text-sm font-medium transition-all min-h-10',
                           watchTime === slot
-                            ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
-                            : 'border-border bg-background text-foreground hover:border-emerald-400 hover:bg-emerald-50'
+                            ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                            : 'border-border bg-background text-foreground hover:border-primary/50 hover:bg-primary/10'
                         )}
                       >
                         {formatTime(slot)}
@@ -567,10 +562,10 @@ export function CreateAppointmentForm() {
       {/*  Section 5: Appointment Summary                           */}
       {/* ══════════════════════════════════════════════════════════ */}
       {selectedPatient && watchMode && watchPurpose && (
-        <Card className="border-emerald-200 bg-emerald-50/30">
+        <Card className="border-primary/30 bg-primary/10">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <CheckCircle2 className="h-4 w-4 text-primary" />
               Appointment Summary
             </CardTitle>
           </CardHeader>
@@ -625,10 +620,10 @@ export function CreateAppointmentForm() {
           <Button
             type="submit"
             disabled={isPending}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 rounded-full px-5 min-h-11"
           >
             {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Create Appointment
+            {isPending ? 'Saving…' : 'Create Appointment'}
           </Button>
           <Button
             type="button"
@@ -640,6 +635,23 @@ export function CreateAppointmentForm() {
           </Button>
         </div>
       )}
+
+      <Dialog open={showCreatePatientDialog} onOpenChange={setShowCreatePatientDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Patient</DialogTitle>
+            <DialogDescription>
+              Add a patient and continue booking the appointment.
+            </DialogDescription>
+          </DialogHeader>
+          <PatientForm
+            mode="create"
+            onSuccess={handleInlinePatientCreated}
+            embedded
+            onCancel={() => setShowCreatePatientDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </form>
   )
 }

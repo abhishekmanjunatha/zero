@@ -6,14 +6,14 @@ import {
   ChevronRight,
   Clock,
   User,
-  ClipboardList,
 } from 'lucide-react'
 import { getTodayAppointments, getRecentPatients } from '@/actions/dashboard'
 import type { TodayAppointment, RecentPatient } from '@/actions/dashboard'
 import { PatientSearchCommand } from '@/components/layout/patient-search-command'
-import { Badge } from '@/components/ui/badge'
+import { AppointmentQuickActions } from '@/components/dashboard/appointment-quick-actions'
 import { LinkButton } from '@/components/ui/link-button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Dashboard' }
@@ -41,9 +41,11 @@ const STATUS_CONFIG: Record<
   { label: string; className: string }
 > = {
   upcoming: { label: 'Upcoming', className: 'bg-amber-100 text-amber-700 border-amber-200' },
-  in_progress: { label: 'In Progress', className: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  checked_in: { label: 'Checked In', className: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+  in_progress: { label: 'In Progress', className: 'bg-primary/15 text-primary border-primary/30' },
   completed: { label: 'Completed', className: 'bg-slate-100 text-slate-600 border-slate-200' },
   cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-600 border-red-200' },
+  no_show: { label: 'No Show', className: 'bg-orange-100 text-orange-700 border-orange-200' },
 }
 
 const MODE_CONFIG: Record<TodayAppointment['mode'], string> = {
@@ -68,56 +70,47 @@ function AppointmentCard({ appt }: { appt: TodayAppointment }) {
       : PURPOSE_CONFIG[appt.purpose]
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border bg-card hover:bg-accent/30 transition-colors">
+    <div className="rounded-lg border bg-card px-3 py-2.5 hover:bg-accent/30 transition-colors">
       {/* Left info */}
-      <div className="flex items-start gap-3 min-w-0">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-          <User className="h-5 w-5" />
-        </div>
-        <div className="min-w-0">
-          <p className="font-medium text-sm truncate">{appt.patient.full_name}</p>
-          <p className="text-xs text-muted-foreground">{appt.patient.patient_code}</p>
-          <div className="flex flex-wrap items-center gap-1.5 mt-1">
-            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              {formatTime(appt.appointment_time)}
-            </span>
-            <span className="text-xs text-muted-foreground">·</span>
-            <span className="text-xs text-muted-foreground">{purposeLabel}</span>
-            <span className="text-xs text-muted-foreground">·</span>
-            <span className="text-xs text-muted-foreground">{MODE_CONFIG[appt.mode]}</span>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-2.5 min-w-0">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <User className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-sm truncate">{appt.patient.full_name}</p>
+              <span
+                className={cn(
+                  'inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium shrink-0',
+                  status.className
+                )}
+              >
+                {status.label}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">{appt.patient.patient_code}</p>
+            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                {formatTime(appt.appointment_time)}
+              </span>
+              <span className="text-xs text-muted-foreground">·</span>
+              <span className="text-xs text-muted-foreground">{purposeLabel}</span>
+              <span className="text-xs text-muted-foreground">·</span>
+              <span className="text-xs text-muted-foreground">{MODE_CONFIG[appt.mode]}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Right: status + actions */}
-      <div className="flex items-center gap-2 shrink-0">
-        <span
-          className={cn(
-            'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
-            status.className
-          )}
-        >
-          {status.label}
-        </span>
-        <LinkButton
-          href={`/patients/${appt.patient.id}`}
-          title="Open Patient Profile"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-        >
-          <User className="h-4 w-4" />
-        </LinkButton>
-        <LinkButton
-          href={`/clinical-notes?patient=${appt.patient.id}&appointment=${appt.id}`}
-          title="Clinical Notes"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-        >
-          <ClipboardList className="h-4 w-4" />
-        </LinkButton>
+        {/* Right: quick actions + quick links */}
+        <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
+          <AppointmentQuickActions
+            appointmentId={appt.id}
+            patientId={appt.patient.id}
+            status={appt.status}
+          />
+        </div>
       </div>
     </div>
   )
@@ -170,63 +163,20 @@ export default async function DashboardPage() {
   })
 
   return (
-    <div className="space-y-8 max-w-5xl">
-      {/* Date header */}
-      <p className="text-sm text-muted-foreground">{todayFormatted}</p>
-
-      {/* ── Section 1: Today's Appointments ─────────────────────────────── */}
+    <div className="space-y-7 max-w-5xl">
+      {/* ── Section 1: Quick Actions ────────────────────────────────────── */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base font-semibold">
-            Today&apos;s Appointments
-            {todayAppointments.length > 0 && (
-              <Badge variant="secondary" className="ml-2 font-normal">
-                {todayAppointments.length}
-              </Badge>
-            )}
-          </CardTitle>
-          <Link
-            href="/appointments"
-            className="text-sm text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1"
-          >
-            View All
-            <ChevronRight className="h-4 w-4" />
-          </Link>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {todayAppointments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
-              <CalendarPlus className="h-8 w-8 opacity-40" />
-              <p className="text-sm">No appointments scheduled for today</p>
-              <LinkButton
-                href="/appointments/new"
-                variant="outline"
-                size="sm"
-                className="mt-1 gap-2"
-              >
-                <CalendarPlus className="h-4 w-4" />
-                Schedule Appointment
-              </LinkButton>
-            </div>
-          ) : (
-            todayAppointments.map((appt) => (
-              <AppointmentCard key={appt.id} appt={appt} />
-            ))
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ── Section 2: Quick Actions ────────────────────────────────────── */}
-      <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2">
           <CardTitle className="text-base font-semibold">Quick Actions</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-3">
+        <CardContent className="space-y-2.5">
+          <PatientSearchCommand className="max-w-xl" />
+          <div className="flex flex-wrap gap-2">
             <LinkButton
               href="/appointments/new"
               variant="default"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+              size="sm"
+              className="h-8 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
             >
               <CalendarPlus className="h-4 w-4" />
               Add Appointment
@@ -234,52 +184,95 @@ export default async function DashboardPage() {
             <LinkButton
               href="/patients/new"
               variant="outline"
-              className="gap-2"
+              size="sm"
+              className="h-8 gap-2"
             >
               <UserPlus className="h-4 w-4" />
               Add Patient
             </LinkButton>
           </div>
-          <PatientSearchCommand className="max-w-lg" />
         </CardContent>
       </Card>
 
-      {/* ── Section 3: Recent Patients ──────────────────────────────────── */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base font-semibold">Recent Patients</CardTitle>
+      {/* Date header */}
+      <p className="text-sm text-muted-foreground">{todayFormatted}</p>
+
+      {/* ── Section 2: Today's Appointments ─────────────────────────────── */}
+      <CollapsibleSection
+        title="Today's Appointments"
+        subtitle="Keep track of upcoming and completed visits"
+        count={todayAppointments.length}
+        defaultOpen
+        className="clay-card"
+        contentClassName="space-y-2"
+      >
+        <div className="mb-1 flex justify-end">
           <Link
-            href="/patients"
-            className="text-sm text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1"
+            href="/appointments"
+            className="text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1"
           >
             View All
             <ChevronRight className="h-4 w-4" />
           </Link>
-        </CardHeader>
-        <CardContent>
-          {recentPatients.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
-              <UserPlus className="h-8 w-8 opacity-40" />
-              <p className="text-sm">No patients yet</p>
-              <LinkButton
-                href="/patients/new"
-                variant="outline"
-                size="sm"
-                className="mt-1 gap-2"
-              >
-                <UserPlus className="h-4 w-4" />
-                Add First Patient
-              </LinkButton>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {recentPatients.map((patient) => (
-                <RecentPatientRow key={patient.id} patient={patient} />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+        {todayAppointments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+            <CalendarPlus className="h-8 w-8 opacity-40" />
+            <p className="text-sm">No appointments scheduled for today</p>
+            <LinkButton
+              href="/appointments/new"
+              variant="outline"
+              size="sm"
+              className="mt-1 gap-2"
+            >
+              <CalendarPlus className="h-4 w-4" />
+              Schedule Appointment
+            </LinkButton>
+          </div>
+        ) : (
+          todayAppointments.map((appt) => (
+            <AppointmentCard key={appt.id} appt={appt} />
+          ))
+        )}
+      </CollapsibleSection>
+
+      {/* ── Section 3: Recent Patients ──────────────────────────────────── */}
+      <CollapsibleSection
+        title="Recent Patients"
+        subtitle="Jump back into the latest active cases"
+        count={recentPatients.length}
+        className="clay-card"
+        contentClassName="space-y-1"
+      >
+        <div className="mb-1 flex justify-end">
+          <Link
+            href="/patients"
+            className="text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1"
+          >
+            View All
+            <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
+        {recentPatients.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+            <UserPlus className="h-8 w-8 opacity-40" />
+            <p className="text-sm">No patients yet</p>
+            <LinkButton
+              href="/patients/new"
+              variant="outline"
+              size="sm"
+              className="mt-1 gap-2"
+            >
+              <UserPlus className="h-4 w-4" />
+              Add First Patient
+            </LinkButton>
+          </div>
+        ) : (
+          recentPatients.map((patient) => (
+            <RecentPatientRow key={patient.id} patient={patient} />
+          ))
+        )}
+      </CollapsibleSection>
     </div>
   )
 }

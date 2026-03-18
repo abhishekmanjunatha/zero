@@ -18,7 +18,13 @@ export type PrimaryGoal = 'weight_loss' | 'muscle_gain' | 'maintenance' | 'condi
 // ─────────────────────────────────────────────
 export type AppointmentPurpose = 'new_consultation' | 'follow_up' | 'review_with_report' | 'custom'
 export type AppointmentMode = 'walk_in' | 'scheduled'
-export type AppointmentStatus = 'upcoming' | 'in_progress' | 'completed' | 'cancelled'
+export type AppointmentStatus =
+  | 'upcoming'
+  | 'checked_in'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled'
+  | 'no_show'
 
 // ─────────────────────────────────────────────
 // Clinical Notes
@@ -44,7 +50,11 @@ export type ReportSource = 'patient' | 'dietitian'
 // ─────────────────────────────────────────────
 export type TimelineEventType =
   | 'appointment_created'
+  | 'appointment_checked_in'
+  | 'appointment_in_progress'
   | 'appointment_completed'
+  | 'appointment_cancelled'
+  | 'appointment_no_show'
   | 'clinical_document_created'
   | 'lab_report_uploaded'
   | 'weight_updated'

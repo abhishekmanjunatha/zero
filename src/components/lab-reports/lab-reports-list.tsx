@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   FlaskConical,
-  Plus,
   Link2,
   Trash2,
   MoreHorizontal,
@@ -17,6 +16,7 @@ import {
   Copy,
   Check,
   ExternalLink,
+  AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -32,9 +32,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
-import { cn } from '@/lib/utils'
+import { cn, copyToClipboard } from '@/lib/utils'
 import { deleteLabReport, generateSecureUploadToken } from '@/actions/lab-reports'
 import type { Tables } from '@/types/database'
 
@@ -44,6 +43,8 @@ interface LabReportsListProps {
   })[]
   patientId?: string
   patientName?: string
+  fetchError?: string | null
+  hideTitle?: boolean
 }
 
 const REPORT_TYPE_LABELS: Record<string, string> = {
@@ -62,7 +63,7 @@ function formatDate(iso: string) {
   })
 }
 
-export function LabReportsList({ reports, patientId, patientName }: LabReportsListProps) {
+export function LabReportsList({ reports, patientId, patientName, fetchError, hideTitle = false }: LabReportsListProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [tokenLink, setTokenLink] = useState<string | null>(null)
@@ -101,9 +102,14 @@ export function LabReportsList({ reports, patientId, patientName }: LabReportsLi
 
   const handleCopyLink = async () => {
     if (!tokenLink) return
-    await navigator.clipboard.writeText(tokenLink)
+    const copiedSuccessfully = await copyToClipboard(tokenLink)
+    if (!copiedSuccessfully) {
+      toast.error('Unable to copy link automatically. Please copy it manually.')
+      return
+    }
+
     setCopied(true)
-    toast.success('Link copied!')
+    toast.success('Link copied')
     setTimeout(() => setCopied(false), 2000)
   }
 
@@ -116,19 +122,21 @@ export function LabReportsList({ reports, patientId, patientName }: LabReportsLi
   }
 
   const uploadHref = patientId
-    ? `/lab-reports/upload?patient=${patientId}`
-    : '/lab-reports/upload'
+    ? `/patients/${patientId}/lab-reports/upload`
+    : '/patients'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Lab Reports</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Upload, analyze, and manage lab reports for your patients.
-          </p>
-        </div>
+        {!hideTitle && (
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Lab Reports</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Upload, analyze, and manage lab reports for your patients.
+            </p>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           {patientId && (
             <Button
@@ -186,14 +194,26 @@ export function LabReportsList({ reports, patientId, patientName }: LabReportsLi
         </DialogContent>
       </Dialog>
 
+      {/* Error state */}
+      {fetchError && (
+        <div className="flex flex-col items-center justify-center rounded-xl border py-16 gap-3">
+          <AlertTriangle className="h-8 w-8 text-destructive/60" />
+          <p className="text-sm font-medium">Something went wrong</p>
+          <p className="text-xs text-muted-foreground">{fetchError}</p>
+          <Button variant="outline" size="sm" onClick={() => router.refresh()} className="mt-1">
+            Try again
+          </Button>
+        </div>
+      )}
+
       {/* Empty state */}
-      {reports.length === 0 && (
+      {!fetchError && reports.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16 gap-3 text-muted-foreground">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
             <FlaskConical className="h-7 w-7 opacity-40" />
           </div>
-          <p className="text-sm font-medium">No lab reports yet</p>
-          <p className="text-xs">Upload a report or request one from the patient.</p>
+          <p className="text-sm font-medium">No lab reports found</p>
+          <p className="text-xs">Start by uploading a lab report.</p>
           <Link
             href={uploadHref}
             className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'mt-2 gap-2')}
@@ -205,22 +225,29 @@ export function LabReportsList({ reports, patientId, patientName }: LabReportsLi
       )}
 
       {/* Reports list */}
-      {reports.length > 0 && (
-        <div className="space-y-3">
+      {!fetchError && reports.length > 0 && (
+        <div className="space-y-2.5">
           {reports.map((report) => (
             <div
               key={report.id}
-              className="group flex items-center gap-4 rounded-xl border bg-card p-4 hover:shadow-sm transition-shadow cursor-pointer"
-              onClick={() => router.push(`/lab-reports/${report.id}`)}
+              className="group flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 hover:shadow-sm transition-shadow cursor-pointer"
+              onClick={() => {
+                const targetPatientId = patientId ?? report.patient?.id
+                if (!targetPatientId) {
+                  router.push('/patients')
+                  return
+                }
+                router.push(`/patients/${targetPatientId}/lab-reports/${report.id}`)
+              }}
             >
               {/* Icon */}
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
-                <FileText className="h-5 w-5" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+                <FileText className="h-4 w-4" />
               </div>
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate">{report.title}</p>
+                <p className="text-sm font-medium truncate">{report.title}</p>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   {report.report_type && (
                     <Badge variant="secondary" className="text-xs font-normal capitalize">
@@ -270,7 +297,12 @@ export function LabReportsList({ reports, patientId, patientName }: LabReportsLi
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation()
-                      router.push(`/lab-reports/${report.id}`)
+                      const targetPatientId = patientId ?? report.patient?.id
+                      if (!targetPatientId) {
+                        router.push('/patients')
+                        return
+                      }
+                      router.push(`/patients/${targetPatientId}/lab-reports/${report.id}`)
                     }}
                   >
                     <FileText className="h-4 w-4 mr-2" />

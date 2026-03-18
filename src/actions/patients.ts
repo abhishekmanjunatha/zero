@@ -14,12 +14,12 @@ function generatePatientCode(): string {
 }
 
 // ── Get all patients for the logged-in dietitian ────────────────────────────
-export async function getPatients(search?: string): Promise<Tables<'patients'>[]> {
+export async function getPatients(search?: string): Promise<{ data: Tables<'patients'>[]; error?: string }> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return []
+  if (!user) return { data: [] }
 
   let query = supabase
     .from('patients')
@@ -33,12 +33,17 @@ export async function getPatients(search?: string): Promise<Tables<'patients'>[]
     )
   }
 
-  const { data } = await query.order('last_visit_at', {
+  const { data, error } = await query.order('last_visit_at', {
     ascending: false,
     nullsFirst: false,
   })
 
-  return (data as Tables<'patients'>[] | null) ?? []
+  if (error) {
+    console.error('[Patients] getPatients error:', error.message)
+    return { data: [], error: 'Failed to load patients. Please try again.' }
+  }
+
+  return { data: (data as Tables<'patients'>[] | null) ?? [] }
 }
 
 // ── Get a single patient (verifies ownership) ───────────────────────────────
@@ -51,12 +56,16 @@ export async function getPatient(
   } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('patients')
     .select('*')
     .eq('id', id)
     .eq('dietitian_id', user.id)
     .single()
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('[Patients] getPatient error:', error.message)
+  }
 
   return (data as Tables<'patients'> | null)
 }
