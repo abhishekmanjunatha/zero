@@ -409,20 +409,18 @@ export function InvitePatientDialog({ open, onOpenChange }: InvitePatientDialogP
               </div>
 
               {inviteUrl && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 overflow-hidden">
-                    <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{inviteUrl}</p>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCopyLink}
-                      className="shrink-0 gap-1.5 text-xs"
-                    >
-                      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                      {copied ? 'Copied' : 'Copy Link'}
-                    </Button>
-                  </div>
+                <div className="overflow-hidden rounded-lg border bg-muted/30 p-3">
+                  <p className="truncate text-xs text-muted-foreground">{inviteUrl}</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyLink}
+                    className="mt-2 w-full gap-1.5 text-xs"
+                  >
+                    {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copied ? 'Copied' : 'Copy Link'}
+                  </Button>
                 </div>
               )}
 
