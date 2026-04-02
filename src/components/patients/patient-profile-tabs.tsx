@@ -23,6 +23,7 @@ import {
   Loader2,
   Pencil,
   Pill,
+  Plus,
   Sparkles,
   TriangleAlert,
   TrendingUp,
@@ -40,7 +41,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { generateSecureUploadToken } from '@/actions/lab-reports'
+import { generateSecureUploadToken, createManualLabReport } from '@/actions/lab-reports'
 import { getAppointmentStatusMeta } from '@/lib/constants/appointment-status'
 import { cn, copyToClipboard } from '@/lib/utils'
 import type { Tables } from '@/types/database'
@@ -257,6 +258,10 @@ export function PatientProfileTabs({
   const [aiInsight, setAiInsight] = useState<JourneySummaryResponse | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [manualDialogOpen, setManualDialogOpen] = useState(false)
+  const [manualTitle, setManualTitle] = useState('')
+  const [manualType, setManualType] = useState('blood_test')
+  const [manualCreating, setManualCreating] = useState(false)
   const age = calcAge(patient.date_of_birth)
 
   const generateInsight = useCallback(async () => {
@@ -822,12 +827,80 @@ export function PatientProfileTabs({
         </div>
       </TabsContent>
 
+      {/* Add Report Metrics dialog */}
+      <Dialog open={manualDialogOpen} onOpenChange={setManualDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Report Metrics</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-on-surface-variant">Create a lab report record to manually enter metrics — no file upload needed.</p>
+          <div className="space-y-3 pt-2">
+            <div>
+              <label className="text-xs font-semibold text-on-surface-variant">Report Title</label>
+              <input
+                type="text"
+                value={manualTitle}
+                onChange={(e) => setManualTitle(e.target.value)}
+                placeholder="e.g. Blood Test — March 2026"
+                className="mt-1 w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-on-surface-variant">Report Type</label>
+              <select
+                value={manualType}
+                onChange={(e) => setManualType(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {Object.entries(REPORT_TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              disabled={manualCreating || !manualTitle.trim()}
+              onClick={() => {
+                setManualCreating(true)
+                startTransition(async () => {
+                  const result = await createManualLabReport({
+                    patient_id: patient.id,
+                    title: manualTitle.trim(),
+                    report_type: manualType,
+                  })
+                  setManualCreating(false)
+                  if (result.error) {
+                    toast.error(result.error)
+                    return
+                  }
+                  setManualDialogOpen(false)
+                  setManualTitle('')
+                  toast.success('Report created — add your metrics below')
+                  router.push(`/patients/${patient.id}/lab-reports/${result.reportId}`)
+                })
+              }}
+              className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+            >
+              {manualCreating ? 'Creating…' : 'Create & Add Metrics'}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* ── Section 5: Lab Reports ──────────────────────────────── */}
       <TabsContent value="labs" className="mt-0">
         <div className="overflow-hidden rounded-2xl border border-outline-variant bg-white shadow-[0_10px_26px_-20px_rgba(8,47,75,0.6)]">
           <div className="flex items-center justify-between border-b border-outline-variant/60 px-4 py-3">
             <h3 className="text-sm font-semibold text-on-surface">Lab Reports</h3>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setManualDialogOpen(true)}
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-outline-variant px-3 text-xs font-semibold text-primary transition-colors hover:bg-surface-container-low active:bg-surface-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              >
+                <Plus className="h-4 w-4" />
+                Add Report Metrics
+              </button>
               <button
                 type="button"
                 onClick={handleGenerateReportLink}

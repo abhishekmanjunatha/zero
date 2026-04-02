@@ -198,6 +198,72 @@ export async function uploadLabReport(input: {
   return { reportId }
 }
 
+// ── Create manual lab report (no files — for physical copy metric entry) ────
+
+export async function createManualLabReport(input: {
+  patient_id: string
+  title: string
+  report_type?: string
+}): Promise<{ reportId?: string; error?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const ownsPatient = await ensurePatientOwnedByDietitian(
+    supabase,
+    user.id,
+    input.patient_id
+  )
+  if (!ownsPatient) {
+    return { error: 'Invalid patient reference for this account.' }
+  }
+
+  if (!input.title.trim()) return { error: 'Report title is required' }
+
+  const { data, error } = await supabase
+    .from('lab_reports')
+    .insert({
+      dietitian_id: user.id,
+      patient_id: input.patient_id,
+      title: input.title.trim(),
+      report_type: (input.report_type as Tables<'lab_reports'>['report_type']) ?? null,
+      file_urls: [],
+      upload_source: 'dietitian' as const,
+    })
+    .select('id')
+    .single()
+
+  if (error || !data) {
+    return { error: error?.message ?? 'Failed to create report' }
+  }
+
+  const reportId = (data as { id: string }).id
+
+  const { error: timelineError } = await supabase.from('timeline_events').insert({
+    dietitian_id: user.id,
+    patient_id: input.patient_id,
+    event_type: 'lab_report_uploaded',
+    event_data: {
+      title: input.title,
+      report_type: input.report_type ?? 'other',
+      source: 'manual_entry',
+    } as unknown as Json,
+    reference_id: reportId,
+  })
+
+  if (timelineError) {
+    console.error('[LabReports] createManualLabReport timeline error:', timelineError.message)
+  }
+
+  revalidatePath('/lab-reports')
+  revalidatePath('/dashboard')
+  revalidatePath(`/patients/${input.patient_id}`)
+
+  return { reportId }
+}
+
 // ── Generate secure upload token (for patient uploads) ──────────────────────
 
 export async function generateSecureUploadToken(
