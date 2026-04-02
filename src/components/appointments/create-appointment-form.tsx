@@ -42,6 +42,7 @@ import {
 import { createAppointment, getAvailableSlots } from '@/actions/appointments'
 import { PatientForm } from '@/components/patients/patient-form'
 import { PatientLookup } from '@/components/shared/patient-lookup'
+import type { RecentPatient } from '@/actions/dashboard'
 import {
   getCurrentDateInTimeZone,
   getCurrentTimeInTimeZone,
@@ -59,7 +60,11 @@ interface PatientResult {
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export function CreateAppointmentForm() {
+interface CreateAppointmentFormProps {
+  recentPatients?: RecentPatient[]
+}
+
+export function CreateAppointmentForm({ recentPatients = [] }: CreateAppointmentFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const preselectedPatientId = searchParams.get('patient')
@@ -229,6 +234,53 @@ export function CreateAppointmentForm() {
               placeholder="Search by name, phone, or patient ID..."
               emptyMessage={searchQuery.trim() ? `No patients found for "${searchQuery}"` : 'No patients found'}
             />
+
+            {/* Recent Patients */}
+            {recentPatients.length > 0 && !searchQuery.trim() && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Recent Patients
+                </p>
+                <div className="divide-y divide-outline-variant/20 rounded-xl border border-outline-variant/30">
+                  {recentPatients.map((rp) => (
+                    <button
+                      key={rp.id}
+                      type="button"
+                      className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-container-low first:rounded-t-xl last:rounded-b-xl"
+                      onClick={() =>
+                        handleSelectPatient({
+                          id: rp.id,
+                          full_name: rp.full_name,
+                          patient_code: rp.patient_code,
+                          phone: rp.phone || null,
+                        })
+                      }
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                        {rp.full_name
+                          .split(' ')
+                          .map((w) => w[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-on-surface">{rp.full_name}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {rp.patient_code}
+                          {rp.phone ? ` · ${rp.phone}` : ''}
+                        </p>
+                      </div>
+                      {rp.last_visit_at && (
+                        <span className="shrink-0 text-[10px] text-muted-foreground">
+                          {new Date(rp.last_visit_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Add New Patient button */}
             <Button

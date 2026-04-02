@@ -59,6 +59,7 @@ export type TimelineEventType =
   | 'lab_report_uploaded'
   | 'weight_updated'
   | 'note_added'
+  | 'patient_invited'
 
 // ─────────────────────────────────────────────
 // Availability

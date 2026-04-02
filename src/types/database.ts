@@ -425,6 +425,7 @@ export type Database = {
             | 'clinical_document_updated'
             | 'patient_created'
             | 'patient_updated'
+            | 'patient_invited'
             | 'template_created'
             | 'template_updated'
             | 'template_deleted'
@@ -456,6 +457,7 @@ export type Database = {
             | 'clinical_document_updated'
             | 'patient_created'
             | 'patient_updated'
+            | 'patient_invited'
             | 'template_created'
             | 'template_updated'
             | 'template_deleted'
@@ -487,6 +489,7 @@ export type Database = {
             | 'clinical_document_updated'
             | 'patient_created'
             | 'patient_updated'
+            | 'patient_invited'
             | 'template_created'
             | 'template_updated'
             | 'template_deleted'
@@ -509,7 +512,7 @@ export type Database = {
           id: string
           dietitian_id: string
           patient_id: string
-          event_type: 'appointment_created' | 'appointment_checked_in' | 'appointment_in_progress' | 'appointment_completed' | 'appointment_cancelled' | 'appointment_no_show' | 'clinical_document_created' | 'lab_report_uploaded' | 'weight_updated' | 'note_added'
+          event_type: 'appointment_created' | 'appointment_checked_in' | 'appointment_in_progress' | 'appointment_completed' | 'appointment_cancelled' | 'appointment_no_show' | 'clinical_document_created' | 'lab_report_uploaded' | 'weight_updated' | 'note_added' | 'patient_invited'
           event_data: Json
           reference_id: string | null
           created_at: string
@@ -518,7 +521,7 @@ export type Database = {
           id?: string
           dietitian_id: string
           patient_id: string
-          event_type: 'appointment_created' | 'appointment_checked_in' | 'appointment_in_progress' | 'appointment_completed' | 'appointment_cancelled' | 'appointment_no_show' | 'clinical_document_created' | 'lab_report_uploaded' | 'weight_updated' | 'note_added'
+          event_type: 'appointment_created' | 'appointment_checked_in' | 'appointment_in_progress' | 'appointment_completed' | 'appointment_cancelled' | 'appointment_no_show' | 'clinical_document_created' | 'lab_report_uploaded' | 'weight_updated' | 'note_added' | 'patient_invited'
           event_data?: Json
           reference_id?: string | null
           created_at?: string
@@ -527,7 +530,7 @@ export type Database = {
           id?: string
           dietitian_id?: string
           patient_id?: string
-          event_type?: 'appointment_created' | 'appointment_checked_in' | 'appointment_in_progress' | 'appointment_completed' | 'appointment_cancelled' | 'appointment_no_show' | 'clinical_document_created' | 'lab_report_uploaded' | 'weight_updated' | 'note_added'
+          event_type?: 'appointment_created' | 'appointment_checked_in' | 'appointment_in_progress' | 'appointment_completed' | 'appointment_cancelled' | 'appointment_no_show' | 'clinical_document_created' | 'lab_report_uploaded' | 'weight_updated' | 'note_added' | 'patient_invited'
           event_data?: Json
           reference_id?: string | null
           created_at?: string
@@ -567,6 +570,54 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_invites: {
+        Row: {
+          id: string
+          dietitian_id: string
+          phone: string
+          country_code: string
+          invite_token: string
+          invite_message: string | null
+          delivery_channel: 'whatsapp' | 'text_message' | 'sms' | null
+          status: 'pending' | 'completed' | 'expired' | 'cancelled'
+          patient_id: string | null
+          expires_at: string
+          completed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          dietitian_id: string
+          phone: string
+          country_code?: string
+          invite_token: string
+          invite_message?: string | null
+          delivery_channel?: 'whatsapp' | 'text_message' | 'sms' | null
+          status?: 'pending' | 'completed' | 'expired' | 'cancelled'
+          patient_id?: string | null
+          expires_at: string
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          dietitian_id?: string
+          phone?: string
+          country_code?: string
+          invite_token?: string
+          invite_message?: string | null
+          delivery_channel?: 'whatsapp' | 'text_message' | 'sms' | null
+          status?: 'pending' | 'completed' | 'expired' | 'cancelled'
+          patient_id?: string | null
+          expires_at?: string
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
@@ -598,4 +649,5 @@ export type LabReport = Tables<'lab_reports'>
 export type Notification = Tables<'notifications'>
 export type TimelineEvent = Tables<'timeline_events'>
 export type Document = Tables<'documents'>
+export type PatientInvite = Tables<'patient_invites'>
 

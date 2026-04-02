@@ -10,6 +10,7 @@ export const NOTIFICATION_TYPES = [
   'clinical_document_updated',
   'patient_created',
   'patient_updated',
+  'patient_invited',
   'template_created',
   'template_updated',
   'template_deleted',

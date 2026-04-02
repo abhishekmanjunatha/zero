@@ -22,6 +22,7 @@ import {
   getRecentActivity,
 } from '@/actions/dashboard'
 import type { RecentActivityEvent, RecentPatient, TodayAppointment } from '@/actions/dashboard'
+import { InvitePatientCard } from '@/components/patients/invite-patient-button'
 import { DashboardActionHub } from '@/components/dashboard/dashboard-action-hub'
 import { DashboardSecondaryPanels } from '@/components/dashboard/dashboard-secondary-panels'
 import { Button } from '@/components/ui/button'
@@ -111,8 +112,8 @@ function DesktopDashboardActions({ todayCount }: { todayCount: number }) {
       iconContainerClassName: 'bg-secondary-container',
     },
     {
-      title: 'Book Slot',
-      subtitle: 'Manage clinician availability',
+      title: 'Schedule Appointment',
+      subtitle: 'Book a future or walk-in slot',
       href: '/appointments/new',
       icon: <CalendarPlus className="h-4.5 w-4.5 text-primary" />,
       iconContainerClassName: 'bg-secondary-container',
@@ -135,7 +136,7 @@ function DesktopDashboardActions({ todayCount }: { todayCount: number }) {
   ]
 
   return (
-    <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
       {actions.map((action) => (
         <Link
           key={action.title}
@@ -156,6 +157,7 @@ function DesktopDashboardActions({ todayCount }: { todayCount: number }) {
           <p className="mt-1 text-xs text-on-surface-variant">{action.subtitle}</p>
         </Link>
       ))}
+      <InvitePatientCard />
     </section>
   )
 }

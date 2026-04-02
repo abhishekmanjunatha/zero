@@ -11,7 +11,7 @@ export default async function NewClinicalNotePage(props: {
   const patientId = searchParams.patient
 
   if (!patientId) {
-    redirect('/patients')
+    redirect('/patients?action=write-note')
   }
 
   return (

@@ -4,16 +4,23 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   ChevronRight,
+  FlaskConical,
+  NotebookPen,
+  CalendarPlus,
   User,
   Pencil,
+  X,
 } from 'lucide-react'
 import type { Tables } from '@/types/database'
 import { ListShell, DataTable, MobileCard, AvatarCircle } from '@/components/shared/list-shell'
+
+type PatientAction = 'upload-lab' | 'write-note' | 'create-appointment'
 
 interface PatientsListProps {
   patients: Tables<'patients'>[]
   searchQuery: string
   fetchError?: string | null
+  action?: PatientAction
 }
 
 const GOAL_LABELS: Record<string, string> = {
@@ -68,11 +75,47 @@ function getDemographicLabel(patient: Tables<'patients'>) {
   return parts.join(', ') || 'Patient record'
 }
 
-export function PatientsList({ patients, searchQuery, fetchError }: PatientsListProps) {
+export function PatientsList({ patients, searchQuery, fetchError, action }: PatientsListProps) {
   const router = useRouter()
 
+  /** Where to go when clicking a patient row, based on the action context */
+  const getPatientHref = (patientId: string) => {
+    switch (action) {
+      case 'upload-lab':
+        return `/patients/${patientId}/lab-reports/upload`
+      case 'write-note':
+        return `/clinical-notes/new?patient=${patientId}`
+      case 'create-appointment':
+        return `/appointments/new?patient=${patientId}`
+      default:
+        return `/patients/${patientId}`
+    }
+  }
+
+  const ACTION_BANNER: Record<PatientAction, { icon: React.ReactNode; label: string }> = {
+    'upload-lab': { icon: <FlaskConical className="h-4 w-4" />, label: 'Select a patient to upload lab report' },
+    'write-note': { icon: <NotebookPen className="h-4 w-4" />, label: 'Select a patient to write a clinical note' },
+    'create-appointment': { icon: <CalendarPlus className="h-4 w-4" />, label: 'Select a patient to schedule an appointment' },
+  }
+
   return (
-    <ListShell
+    <>
+      {action && ACTION_BANNER[action] && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            {ACTION_BANNER[action].icon}
+          </div>
+          <p className="flex-1 text-sm font-medium text-primary">{ACTION_BANNER[action].label}</p>
+          <Link
+            href="/patients"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-surface-container-low hover:text-foreground"
+            aria-label="Cancel action"
+          >
+            <X className="h-4 w-4" />
+          </Link>
+        </div>
+      )}
+      <ListShell
       isEmpty={patients.length === 0}
       error={fetchError}
       onRetry={() => router.refresh()}
@@ -105,7 +148,7 @@ export function PatientsList({ patients, searchQuery, fetchError }: PatientsList
             <tr
               key={p.id}
               className="cursor-pointer border-b border-outline-variant/20 transition-colors hover:bg-surface-container-low"
-              onClick={() => router.push(`/patients/${p.id}`)}
+              onClick={() => router.push(getPatientHref(p.id))}
             >
               <td className="px-5 py-4 text-sm font-semibold text-primary">
                 {p.patient_code ?? `PT-${String(p.id).slice(0, 6).toUpperCase()}`}
@@ -172,10 +215,10 @@ export function PatientsList({ patients, searchQuery, fetchError }: PatientsList
                   </div>
                   <div className="mt-3 flex items-center gap-2">
                     <Link
-                      href={`/patients/${p.id}`}
+                      href={getPatientHref(p.id)}
                       className="inline-flex h-8 flex-1 items-center justify-center rounded-lg bg-surface-container-low text-xs font-semibold text-on-surface-variant"
                     >
-                      View Profile
+                      {action ? ACTION_BANNER[action].label.replace('Select a patient to ', '') : 'View Profile'}
                     </Link>
                     <Link
                       href={`/patients/${p.id}/edit`}
@@ -192,5 +235,6 @@ export function PatientsList({ patients, searchQuery, fetchError }: PatientsList
         </>
       }
     />
+    </>
   )
 }

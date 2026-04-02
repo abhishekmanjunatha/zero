@@ -726,7 +726,7 @@ export function DocumentComposer({
       })
       clearDraft()
       toast.success('PDF downloaded successfully')
-      router.push(`/patients/${patient.id}`)
+      router.push(`/patients/${patient.id}?tab=notes`)
       router.refresh()
     } catch (err) {
       console.error('[PDF] generation error:', err)
@@ -853,7 +853,7 @@ export function DocumentComposer({
       )
       clearDraft()
       toast.success('Document saved, uploaded, and WhatsApp opened.')
-      router.push(`/patients/${patient.id}`)
+      router.push(`/patients/${patient.id}?tab=notes`)
       router.refresh()
     } catch (err) {
       console.error('[WhatsApp] share flow failed:', err)
@@ -1001,7 +1001,7 @@ export function DocumentComposer({
       }
       clearDraft()
       toast.success(isEditMode ? 'Document updated successfully' : 'Document saved successfully')
-      router.push(`/patients/${patient.id}`)
+      router.push(`/patients/${patient.id}?tab=notes`)
       router.refresh()
     })
   }

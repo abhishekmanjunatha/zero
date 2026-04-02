@@ -6,6 +6,7 @@ import {
   ClipboardList,
   FileText,
   FlaskConical,
+  Send,
   UserPlus,
   Activity,
   ChevronRight,
@@ -71,6 +72,11 @@ const EVENT_MAP: Record<string, EventMeta> = {
     icon: <UserPlus className="h-3.5 w-3.5 text-primary" />,
     iconBg: 'bg-primary/10',
     label: (n) => `New patient registered: ${n}`,
+  },
+  patient_invited: {
+    icon: <Send className="h-3.5 w-3.5 text-indigo-600" />,
+    iconBg: 'bg-indigo-50 dark:bg-indigo-950/40',
+    label: (n) => `${n} joined via invite`,
   },
 }
 

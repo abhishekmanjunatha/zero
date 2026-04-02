@@ -13,5 +13,5 @@ export default async function UploadLabReportPage(props: {
     redirect(`/patients/${patientId}/lab-reports/upload`)
   }
 
-  redirect('/patients')
+  redirect('/patients?action=upload-lab')
 }

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import type { DashboardStats } from '@/actions/dashboard'
 import { cn } from '@/lib/utils'
+import { InvitePatientChip } from '@/components/patients/invite-patient-button'
 
 interface DashboardActionHubProps {
   stats: DashboardStats
@@ -59,7 +60,7 @@ export function DashboardActionHub({ stats }: DashboardActionHubProps) {
       tone: 'bg-secondary-container',
     },
     {
-      title: 'Book Slot',
+      title: 'Schedule Appointment',
       href: '/appointments/new',
       icon: <CalendarPlus className="h-5 w-5 text-primary" />,
       tone: 'bg-secondary-container',
@@ -87,6 +88,7 @@ export function DashboardActionHub({ stats }: DashboardActionHubProps) {
         {quickActions.map((action) => (
           <QuickActionChip key={action.title} action={action} />
         ))}
+        <InvitePatientChip />
       </div>
     </section>
   )

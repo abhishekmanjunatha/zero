@@ -20,6 +20,7 @@ import {
   Play,
   Ban,
   CheckCircle2,
+  Send,
   Loader2,
   Pencil,
   Pill,
@@ -161,6 +162,7 @@ const TIMELINE_ICONS: Record<
   lab_report_uploaded: TestTubeDiagonal,
   weight_updated: Activity,
   note_added: FileText,
+  patient_invited: Send,
 }
 
 // ── Info Row helper ───────────────────────────────────────────────────────

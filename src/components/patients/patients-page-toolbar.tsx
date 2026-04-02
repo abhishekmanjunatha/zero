@@ -18,6 +18,7 @@ import { LinkButton } from '@/components/ui/link-button'
 import { PageHeader } from '@/components/shared/page-header'
 import { SearchInput, SegmentedTabs, DateRangePicker, ExportButton } from '@/components/shared/filter-toolbar'
 import type { SegmentedTab } from '@/components/shared/filter-toolbar'
+import { InvitePatientToolbarButton } from '@/components/patients/invite-patient-button'
 import {
   Sheet,
   SheetContent,
@@ -26,6 +27,7 @@ import {
 } from '@/components/ui/sheet'
 
 type PatientsFilterMode = 'all' | 'appointments' | 'labs' | 'notes'
+type PageView = 'directory' | 'invites'
 
 interface PatientsPageToolbarProps {
   initialQuery: string
@@ -33,6 +35,8 @@ interface PatientsPageToolbarProps {
   initialDateFrom: string
   initialDateTo: string
   patientsForExport: Tables<'patients'>[]
+  action?: 'upload-lab' | 'write-note' | 'create-appointment'
+  view?: PageView
 }
 
 const GOAL_LABELS: Record<string, string> = {
@@ -64,6 +68,8 @@ export function PatientsPageToolbar({
   initialDateFrom,
   initialDateTo,
   patientsForExport,
+  action,
+  view = 'directory',
 }: PatientsPageToolbarProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -94,6 +100,7 @@ export function PatientsPageToolbar({
     if (nextMode !== 'all') params.set('mode', nextMode)
     if (nextDateFrom) params.set('from', nextDateFrom)
     if (nextDateTo) params.set('to', nextDateTo)
+    if (action) params.set('action', action)
     const qs = params.toString()
     router.replace(qs ? `${pathname}?${qs}` : pathname)
   }
@@ -152,6 +159,19 @@ export function PatientsPageToolbar({
     })
   }
 
+  const handleViewChange = (nextView: PageView) => {
+    if (nextView === view) return
+    const params = new URLSearchParams()
+    if (nextView !== 'directory') params.set('view', nextView)
+    const qs = params.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname)
+  }
+
+  const VIEW_TABS: SegmentedTab<PageView>[] = [
+    { key: 'directory', label: 'Directory' },
+    { key: 'invites', label: 'Invites' },
+  ]
+
   const handleExportCsv = () => {
     const headers = [
       'Patient',
@@ -198,57 +218,84 @@ export function PatientsPageToolbar({
         <div className="mb-8">
           <PageHeader
             title="Patients"
-            breadcrumbs={[{ label: 'Directory' }, { label: 'Patients' }]}
+            breadcrumbs={[{ label: 'Directory' }, { label: view === 'invites' ? 'Invites' : 'Patients' }]}
             actions={
-              <LinkButton
-                href="/patients/new"
-                variant="cta"
-                size="lg"
-                className="gap-2 px-6 font-bold"
-              >
-                <UserPlus className="h-4 w-4" />
-                Add Patient
-              </LinkButton>
+              <div className="flex items-center gap-3">
+                <SegmentedTabs tabs={VIEW_TABS} active={view} onChange={handleViewChange} />
+                <InvitePatientToolbarButton variant="desktop" />
+                <LinkButton
+                  href="/patients/new"
+                  variant="cta"
+                  size="lg"
+                  className="gap-2 px-6 font-bold"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Add Patient
+                </LinkButton>
+              </div>
             }
           />
         </div>
 
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white p-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <SearchInput
-              value={query}
-              onChange={handleSearchChange}
-              onClear={handleClear}
-              placeholder="Filter patient name or ID..."
-              disabled={isPending}
-              className="min-w-[320px]"
-            />
-            <SegmentedTabs tabs={MODE_TABS} active={mode} onChange={handleModeChange} />
-          </div>
+        {view === 'directory' && (
+          <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white p-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <SearchInput
+                value={query}
+                onChange={handleSearchChange}
+                onClear={handleClear}
+                placeholder="Filter patient name or ID..."
+                disabled={isPending}
+                className="min-w-[320px]"
+              />
+              <SegmentedTabs tabs={MODE_TABS} active={mode} onChange={handleModeChange} />
+            </div>
 
-          <div className="flex items-center gap-3">
-            <DateRangePicker
-              label={appliedRangeLabel}
-              dateFrom={dateFrom}
-              dateTo={dateTo}
-              onDateFromChange={setDateFrom}
-              onDateToChange={setDateTo}
-              onApply={applyDateRange}
-              onClear={clearDateRange}
-              disabled={isPending}
-              dateLabel="Last Visit Date Range"
-            />
-            <ExportButton onClick={handleExportCsv} />
+            <div className="flex items-center gap-3">
+              <DateRangePicker
+                label={appliedRangeLabel}
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+                onDateFromChange={setDateFrom}
+                onDateToChange={setDateTo}
+                onApply={applyDateRange}
+                onClear={clearDateRange}
+                disabled={isPending}
+                dateLabel="Last Visit Date Range"
+              />
+              <ExportButton onClick={handleExportCsv} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="space-y-4 lg:hidden">
-        <LinkButton
-          href="/patients/new"
-          variant="cta"
-          className="h-14 w-full gap-3 rounded-2xl text-base font-bold"
-        >
+        {/* Mobile view toggle */}
+        <div className="flex items-center gap-1 rounded-2xl bg-surface-container-high p-1">
+          {VIEW_TABS.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => handleViewChange(key)}
+              className={cn(
+                'flex-1 rounded-xl px-3 py-2.5 text-sm transition-all',
+                view === key
+                  ? 'bg-white font-semibold text-primary shadow-sm'
+                  : 'font-medium text-on-surface-variant'
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {view === 'directory' && (
+          <>
+            <LinkButton
+              href="/patients/new"
+              variant="cta"
+              className="h-14 w-full gap-3 rounded-2xl text-base font-bold"
+            >
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-tertiary-fixed text-tertiary-container">
             <UserPlus className="h-5 w-5" />
           </span>
@@ -291,6 +338,7 @@ export function PatientsPageToolbar({
               <Link href="/templates" className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-outline-variant/20 bg-white text-primary shadow-sm">
                 <FileText className="h-5 w-5" />
               </Link>
+              <InvitePatientToolbarButton variant="mobile" />
             </div>
 
             <button
@@ -382,6 +430,8 @@ export function PatientsPageToolbar({
             </div>
           </SheetContent>
         </Sheet>
+          </>
+        )}
       </div>
     </section>
   )
