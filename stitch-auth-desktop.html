@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Authenticate | Clinical Precision</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-low": "#f3f4f5",
+              "on-tertiary-fixed-variant": "#005312",
+              "surface-container-lowest": "#ffffff",
+              "primary-fixed": "#cce5ff",
+              "on-error": "#ffffff",
+              "tertiary-fixed-dim": "#88d982",
+              "surface-bright": "#f8f9fa",
+              "secondary": "#50606d",
+              "on-secondary-fixed-variant": "#394955",
+              "surface-container-highest": "#e1e3e4",
+              "secondary-fixed-dim": "#b8c9d8",
+              "secondary-fixed": "#d4e5f4",
+              "on-tertiary-container": "#9cf096",
+              "inverse-surface": "#2e3132",
+              "outline": "#707880",
+              "error-container": "#ffdad6",
+              "on-surface": "#191c1d",
+              "tertiary-container": "#1e6f26",
+              "primary-fixed-dim": "#90cdff",
+              "surface": "#f8f9fa",
+              "on-primary-container": "#bfe0ff",
+              "outline-variant": "#c0c7d0",
+              "primary": "#004d75",
+              "surface-dim": "#d9dadb",
+              "on-secondary-container": "#556572",
+              "surface-container": "#edeeef",
+              "surface-tint": "#006496",
+              "on-primary": "#ffffff",
+              "on-secondary": "#ffffff",
+              "surface-container-high": "#e7e8e9",
+              "on-primary-fixed-variant": "#004b72",
+              "inverse-on-surface": "#f0f1f2",
+              "tertiary-fixed": "#a3f69c",
+              "primary-container": "#006699",
+              "background": "#f8f9fa",
+              "tertiary": "#005513",
+              "surface-variant": "#e1e3e4",
+              "on-tertiary": "#ffffff",
+              "error": "#ba1a1a",
+              "on-error-container": "#93000a",
+              "secondary-container": "#d1e2f1",
+              "on-tertiary-fixed": "#002204",
+              "on-secondary-fixed": "#0d1d28",
+              "on-background": "#191c1d",
+              "inverse-primary": "#90cdff",
+              "on-surface-variant": "#40484f",
+              "on-primary-fixed": "#001e31"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "1.5rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .glass-card {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(12px);
+      }
+    </style>
+</head>
+<body class="bg-background font-body text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed antialiased overflow-hidden">
+<div class="flex h-screen w-full">
+<!-- Left: Brand Section -->
+<section class="hidden lg:flex w-1/2 relative bg-tertiary overflow-hidden p-16 flex-col justify-between">
+<!-- Decorative Background Element -->
+<div class="absolute top-0 right-0 w-full h-full opacity-10 pointer-events-none">
+<img alt="" class="w-full h-full object-cover" data-alt="abstract macro photography of green botanical leaves with soft natural light and deep shadows highlighting textures" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEFo0XoKgz5qv5t86CfTvUiSEVyZ3reea82jdbj6_hdsGeyJr90fqcbVRLNq4mp-yYAmGZrBKHLwuWUpufhp8FQsb5gpYY45uuDduSipBYZO9JkXBdIjKO3tbGbUujAdwbPRF_i4So79MNWflGdH5qkRDcX5OfZCzKhfvZmfsk7gGz9SaqFcKimn0rryfKMG7w3wFpFexIO5k89TDXf6kS9WNv_FQQhzdZe5S1dqPTYyz9CRFfBIycgpRFJnerSgUuP0p37X391Q"/>
+</div>
+<div class="relative z-10">
+<div class="flex items-center gap-3 mb-12">
+<div class="w-10 h-10 rounded-lg bg-tertiary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-on-tertiary-fixed" data-icon="clinical_notes">clinical_notes</span>
+</div>
+<span class="font-headline font-extrabold text-2xl text-tertiary-fixed tracking-tighter uppercase">Clinical Precision</span>
+</div>
+<div class="max-w-xl">
+<span class="inline-block px-4 py-1.5 rounded-full bg-tertiary-container/30 border border-tertiary-fixed/20 text-tertiary-fixed text-xs font-bold tracking-widest uppercase mb-6">STRIVE PLATFORM</span>
+<h1 class="font-headline text-5xl font-extrabold text-white leading-[1.1] tracking-tight mb-6">
+                        Built for nutritionists who move fast.
+                    </h1>
+<p class="text-xl text-tertiary-fixed-dim/80 font-medium leading-relaxed mb-10">
+                        Manage appointments, patients, and care plans in one calm workspace.
+                    </p>
+<div class="space-y-4">
+<div class="flex items-center gap-3 px-5 py-3 rounded-xl bg-white/5 border border-white/10 w-fit">
+<span class="material-symbols-outlined text-tertiary-fixed-dim" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-white font-medium text-sm">Unified intake, sessions, and follow-ups</span>
+</div>
+<div class="flex items-center gap-3 px-5 py-3 rounded-xl bg-white/5 border border-white/10 w-fit">
+<span class="material-symbols-outlined text-tertiary-fixed-dim" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-white font-medium text-sm">Frictionless onboarding</span>
+</div>
+<div class="flex items-center gap-3 px-5 py-3 rounded-xl bg-white/5 border border-white/10 w-fit">
+<span class="material-symbols-outlined text-tertiary-fixed-dim" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-white font-medium text-sm">A focused interface that respects your time</span>
+</div>
+</div>
+</div>
+</div>
+<div class="relative z-10">
+<div class="flex items-center gap-4 text-tertiary-fixed-dim/60">
+<span class="text-xs uppercase tracking-widest font-semibold">Trusted by leading clinics</span>
+<div class="h-px w-24 bg-white/10"></div>
+</div>
+</div>
+</section>
+<!-- Right: Form Section -->
+<main class="w-full lg:w-1/2 bg-surface-container-low flex items-center justify-center p-6 sm:p-12">
+<div class="w-full max-w-md">
+<!-- Mobile Branding -->
+<div class="lg:hidden flex justify-center mb-8">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="clinical_notes" style="font-variation-settings: 'FILL' 1;">clinical_notes</span>
+<span class="font-headline font-black text-xl text-primary tracking-tighter">Clinical Precision</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-8 sm:p-10 shadow-[0_12px_32px_-4px_rgba(25,28,29,0.04)] border border-outline-variant/10">
+<!-- Segmented Control Tabs -->
+<div class="flex p-1 bg-surface-container rounded-lg mb-10">
+<button class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 bg-surface-container-lowest text-primary shadow-sm">Login</button>
+<button class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 text-on-surface-variant hover:text-on-surface">Register</button>
+</div>
+<form class="space-y-6">
+<div class="space-y-2">
+<label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider ml-1" for="email">Work Email</label>
+<input class="w-full px-4 py-3.5 rounded-lg bg-surface-container-high border-none focus:ring-2 focus:ring-primary text-on-surface font-medium placeholder:text-slate-400" id="email" placeholder="dr.smith@clinic.com" type="email"/>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between items-center px-1">
+<label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider" for="password">Password</label>
+<a class="text-xs font-bold text-primary hover:underline underline-offset-4" href="#">Forgot Access?</a>
+</div>
+<div class="relative">
+<input class="w-full px-4 py-3.5 rounded-lg bg-surface-container-high border-none focus:ring-2 focus:ring-primary text-on-surface font-medium placeholder:text-slate-400" id="password" placeholder="••••••••" type="password"/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors" type="button">
+<span class="material-symbols-outlined text-xl" data-icon="visibility">visibility</span>
+</button>
+</div>
+</div>
+<button class="w-full py-4 bg-gradient-to-br from-primary to-primary-container text-white font-headline font-bold rounded-lg flex items-center justify-center gap-2 hover:opacity-90 transition-all duration-200 shadow-md" type="submit">
+                            Authenticate Portal
+                            <span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</form>
+<div class="relative my-8">
+<div class="absolute inset-0 flex items-center">
+<span class="w-full border-t border-outline-variant/30"></span>
+</div>
+<div class="relative flex justify-center text-xs uppercase tracking-widest font-bold">
+<span class="bg-surface-container-lowest px-4 text-on-surface-variant">OR</span>
+</div>
+</div>
+<div class="space-y-4">
+<button class="w-full py-4 bg-secondary-container/50 border border-secondary-container text-on-secondary-container font-headline font-bold rounded-lg flex items-center justify-center gap-2 relative transition-all hover:bg-secondary-container">
+<span class="material-symbols-outlined" data-icon="phone_iphone">phone_iphone</span>
+                            Login with Phone OTP
+                            <span class="absolute -top-2.5 -right-2 px-2 py-0.5 bg-tertiary-fixed text-[10px] text-on-tertiary-fixed font-black uppercase tracking-tighter rounded border border-tertiary-container/10">Coming Soon</span>
+</button>
+</div>
+</div>
+<!-- Footer Component Guidance Integration -->
+<footer class="mt-12 w-full px-0 py-0 flex flex-col sm:flex-row justify-between items-center gap-4">
+<p class="font-inter text-[10px] uppercase tracking-[0.15em] font-medium text-slate-400">© 2024 Clinical Precision Systems.</p>
+<div class="flex gap-6">
+<a class="font-inter text-[10px] uppercase tracking-[0.15em] font-medium text-slate-400 hover:text-primary transition-opacity" href="#">Privacy Policy</a>
+<a class="font-inter text-[10px] uppercase tracking-[0.15em] font-medium text-slate-400 hover:text-primary transition-opacity" href="#">Terms of Service</a>
+</div>
+</footer>
+</div>
+</main>
+</div>
+</body></html>

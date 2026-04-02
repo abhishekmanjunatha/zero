@@ -125,41 +125,46 @@ export function LabReportsList({ reports, patientId, patientName, fetchError, hi
     ? `/patients/${patientId}/lab-reports/upload`
     : '/patients'
 
+  const listSpacing = hideTitle ? 'space-y-3 sm:space-y-4' : 'space-y-4 sm:space-y-5'
+
   return (
-    <div className="space-y-4 sm:space-y-5">
+    <div className={listSpacing}>
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        {!hideTitle && (
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Lab Reports</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Upload, analyze, and manage lab reports for your patients.
-            </p>
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-          {patientId && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={handleGenerateLink}
-              disabled={isPending}
-            >
-              <Link2 className="h-4 w-4" />
-              Request Report
-            </Button>
+      <div className="rounded-2xl border border-border/40 bg-card/95 p-3 shadow-sm sm:p-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          {!hideTitle && (
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Lab Reports</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Upload, analyze, and manage lab reports for your patients.
+              </p>
+            </div>
           )}
-          <Link
-            href={uploadHref}
-            className={cn(
-              buttonVariants({ size: 'sm' }),
-              'bg-emerald-600 hover:bg-emerald-700 text-white gap-2'
+          {hideTitle && <p className="text-sm font-medium text-muted-foreground">Lab Actions</p>}
+          <div className="flex items-center gap-2">
+            {patientId && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 gap-2 rounded-xl"
+                onClick={handleGenerateLink}
+                disabled={isPending}
+              >
+                <Link2 className="h-4 w-4" />
+                Request Report
+              </Button>
             )}
-          >
-            <Upload className="h-4 w-4" />
-            Upload Report
-          </Link>
+            <Link
+              href={uploadHref}
+              className={cn(
+                buttonVariants({ size: 'sm' }),
+                'h-10 gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90'
+              )}
+            >
+              <Upload className="h-4 w-4" />
+              Upload Report
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -196,7 +201,7 @@ export function LabReportsList({ reports, patientId, patientName, fetchError, hi
 
       {/* Error state */}
       {fetchError && (
-        <div className="flex flex-col items-center justify-center rounded-xl border py-16 gap-3">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-border/40 bg-card/95 py-16 gap-3">
           <AlertTriangle className="h-8 w-8 text-destructive/60" />
           <p className="text-sm font-medium">Something went wrong</p>
           <p className="text-xs text-muted-foreground">{fetchError}</p>
@@ -208,7 +213,7 @@ export function LabReportsList({ reports, patientId, patientName, fetchError, hi
 
       {/* Empty state */}
       {!fetchError && reports.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16 gap-3 text-muted-foreground">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/40 bg-card/95 py-16 gap-3 text-muted-foreground">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
             <FlaskConical className="h-7 w-7 opacity-40" />
           </div>
@@ -230,7 +235,7 @@ export function LabReportsList({ reports, patientId, patientName, fetchError, hi
           {reports.map((report) => (
             <div
               key={report.id}
-              className="group flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 hover:shadow-sm transition-shadow cursor-pointer"
+              className="group flex cursor-pointer items-center gap-3 rounded-xl border border-border/40 bg-card/95 px-3 py-2.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
               onClick={() => {
                 const targetPatientId = patientId ?? report.patient?.id
                 if (!targetPatientId) {
@@ -241,7 +246,7 @@ export function LabReportsList({ reports, patientId, patientName, fetchError, hi
               }}
             >
               {/* Icon */}
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600 ring-1 ring-border/40">
                 <FileText className="h-4 w-4" />
               </div>
 
@@ -288,7 +293,7 @@ export function LabReportsList({ reports, patientId, patientName, fetchError, hi
               {/* Actions dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger
-                  className="opacity-0 group-hover:opacity-100 transition-opacity rounded-md p-1.5 hover:bg-muted shrink-0"
+                  className="rounded-md p-1.5 opacity-100 transition-colors hover:bg-muted sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <MoreHorizontal className="h-4 w-4 text-muted-foreground" />

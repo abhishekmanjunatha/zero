@@ -3,43 +3,12 @@
 import { useState, useTransition, useCallback, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
-  Plus,
-  Trash2,
-  GripVertical,
-  ArrowUp,
-  ArrowDown,
+  ArrowLeft,
   Loader2,
-  Sparkles,
-  Heart,
-  Lightbulb,
-  Eye,
   Save,
-  X,
-  ChevronDown,
-  ChevronUp,
-  User,
-  Ruler,
-  CheckCircle2,
-  RotateCcw,
-  Download,
-  MessageCircle,
-  BookmarkPlus,
-  AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from '@/components/ui/select'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { createClinicalNote, updateClinicalNote } from '@/actions/clinical-notes'
@@ -47,9 +16,14 @@ import { createDocumentTemplate, getDocumentTemplates } from '@/actions/template
 import { useLocalDraft } from '@/hooks/use-local-draft'
 import type { DocumentType, DocumentBlock } from '@/types/app'
 import type { Tables, Json } from '@/types/database'
-import { downloadDocumentAsPDF, generateDocumentAsPDFBlob, type DietitianPDFData } from '@/lib/pdf-generator'
+import { downloadPDFFromServer, generatePDFBlobFromServer, type GeneratePDFInput } from '@/lib/pdf/client'
+import type { PDFDietitianData } from '@/lib/pdf/html-template'
+import { StepTypeSelection } from './steps/step-type-selection'
+import { StepPatientMeasurements } from './steps/step-patient-measurements'
+import { StepContentEditor } from './steps/step-content-editor'
+import { StepPreview } from './steps/step-preview'
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// †”€†”€ Types †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
 
 interface PatientContext {
   id: string
@@ -62,8 +36,8 @@ interface PatientContext {
   weight_kg: number | null
   activity_level: string | null
   dietary_type: string | null
-  medical_conditions: string[] | null
-  food_allergies: string[] | null
+  medical_conditions: readonly string[] | string[] | null
+  food_allergies: readonly string[] | string[] | null
   primary_goal: string | null
 }
 
@@ -84,19 +58,12 @@ interface DocumentComposerDraft {
   selectedTemplateId: string | null
 }
 
-// ── Document type labels ───────────────────────────────────────────────────
-
-const DOC_TYPE_LABELS: Record<string, string> = {
-  quick_note: 'Quick Note',
-  meal_plan: 'Meal Plan',
-  follow_up_recommendation: 'Follow-up Recommendation',
-  custom: 'Custom Document',
-}
+// †”€†”€ Document type labels †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
 
 const WHATSAPP_LINK_EXPIRY_SECONDS = 60 * 60 * 24 * 7
 const WHATSAPP_MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
-// ── Templates ────────────────────────────────────────────────────────────────
+// †”€†”€ Templates †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
 
 interface DocTemplate {
   id: string
@@ -138,7 +105,7 @@ function normalizeTemplateBlocks(raw: Json): DocumentBlock[] {
     })
 }
 
-// ── Default blocks per document type ───────────────────────────────────────
+// †”€†”€ Default blocks per document type †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
 
 function defaultBlocksForType(type: DocumentType): DocumentBlock[] {
   switch (type) {
@@ -169,7 +136,7 @@ function defaultBlocksForType(type: DocumentType): DocumentBlock[] {
   }
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// †”€†”€ Helpers †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
 
 function computeAge(dob: string | null): string {
   if (!dob) return 'N/A'
@@ -214,7 +181,7 @@ function computeWeightDiff(
   return (diff >= 0 ? '+' : '') + diff.toFixed(1) + ' kg'
 }
 
-// ── Markdown sanitiser ───────────────────────────────────────────────────────
+// †”€†”€ Markdown sanitiser †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
 // Strips AI-generated markdown formatting before preview / PDF rendering.
 // Kept at module level so it can be used both inside callAI (at source) and
 // inside previewContent (as a fallback for existing saved content).
@@ -228,9 +195,9 @@ function stripMarkdown(text: string): string {
     .replace(/_([^_]+)_/g, '$1')               // _italic_
     .replace(/`{3}[\s\S]*?`{3}/g, '')          // ```code blocks```
     .replace(/`([^`]+)`/g, '$1')               // `inline code`
-    .replace(/^[-*+]\s+/gm, '\u2022 ')        // - list  →  • bullet
+    .replace(/^[-*+]\s+/gm, '\u2022 ')        // - list  ††’  †€¢ bullet
     .replace(/^\d+\.\s+/gm, '')               // 1. ordered list
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')  // [text](url) → text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')  // [text](url) ††’ text
     .replace(/\\([\\`*_{}[\]()#+\-.!])/g, '$1') // escaped chars
     .trim()
 }
@@ -291,7 +258,7 @@ function buildPatientSnapshotBlock(
   }
 }
 
-// ── Component ──────────────────────────────────────────────────────────────
+// †”€†”€ Component †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
 
 export function DocumentComposer({
   existingNote,
@@ -309,38 +276,38 @@ export function DocumentComposer({
 
   // Document state
   const [docType, setDocType] = useState<DocumentType>(
-    (existingNote?.document_type as DocumentType) ?? 'meal_plan'
+    (existingNote?.document_type as DocumentType) ?? 'quick_note'
   )
   const [docTitle, setDocTitle] = useState(existingNote?.title ?? '')
   const [blocks, setBlocks] = useState<DocumentBlock[]>(() => {
     if (existingNote?.content) {
       const parsed = existingNote.content as unknown
       if (Array.isArray(parsed)) {
-        // Strip legacy internal title/snapshot blocks — title is top-level field.
+        // Strip legacy internal title/snapshot blocks  -  title is top-level field.
         return sanitizeContentBlocks(parsed as DocumentBlock[])
       }
     }
     return defaultBlocksForType(
-      (existingNote?.document_type as DocumentType) ?? 'meal_plan'
+      (existingNote?.document_type as DocumentType) ?? 'quick_note'
     )
   })
 
   // AI state
   const [aiLoading, setAiLoading] = useState<string | null>(null)
   const [aiSuggestions, setAiSuggestions] = useState<string | null>(null)
-  // Staged AI result — shown in preview only until the user explicitly applies it
+  // Staged AI result  -  shown in preview only until the user explicitly applies it
   const [aiEnhancedBlocks, setAiEnhancedBlocks] = useState<DocumentBlock[] | null>(null)
   const [aiRawResult, setAiRawResult] = useState<string | null>(null)
   const [aiMeta, setAiMeta] = useState<{ isFallback: boolean; reason?: string } | null>(null)
   const [lastAiAction, setLastAiAction] = useState<'enhance' | 'patient_friendly' | 'suggest' | null>(null)
 
-  // Preview — open by default
+  // Preview  -  open by default
   const [showPreview, setShowPreview] = useState(true)
   const [includePatientInfo, setIncludePatientInfo] = useState(true)
-  // Stable ref to the rendered preview content div — used for PDF capture
+  // Stable ref to the rendered preview content div  -  used for PDF capture
   const previewContentRef = useRef<HTMLDivElement>(null)
 
-  // Visit measurements — stored as strings for controlled inputs
+  // Visit measurements  -  stored as strings for controlled inputs
   const [visitHeight, setVisitHeight] = useState<string>('')
   const [visitWeight, setVisitWeight] = useState<string>('')
   // The weight recorded at the start of this session (reference for weight change)
@@ -348,10 +315,14 @@ export function DocumentComposer({
   const [isSavingMeasurements, setIsSavingMeasurements] = useState(false)
   const [pdfPending, setPdfPending] = useState(false)
   const [waPending, setWaPending] = useState(false)
-  const [dietitianPDFData, setDietitianPDFData] = useState<DietitianPDFData | null>(null)
+  const [dietitianPDFData, setDietitianPDFData] = useState<PDFDietitianData | null>(null)
   // Templates: loaded from DB per logged-in dietitian
   const [localTemplates, setLocalTemplates] = useState<DocTemplate[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
+  // Wizard step state (1=TYPE  2=PATIENT  3=CONTENT  4=PREVIEW)
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
+  // AI bottom sheet state (mobile step 3)
+  const [showAISheet, setShowAISheet] = useState(false)
   const draftKey = `document-composer-draft:${existingNote?.id ?? preselectedPatientId ?? 'new'}`
   const { loadDraft, saveDraft, clearDraft } = useLocalDraft<DocumentComposerDraft>({
     storageKey: draftKey,
@@ -433,7 +404,7 @@ export function DocumentComposer({
     fetchPatient()
   }, [preselectedPatientId, existingNote?.patient_id, patient])
 
-  // ── Initialize visit measurements once when patient becomes available ──
+  // †”€†”€ Initialize visit measurements once when patient becomes available †”€†”€
   useEffect(() => {
     if (!patient) return
     setVisitHeight((prev) => prev === '' ? (patient.height_cm?.toString() ?? '') : prev)
@@ -441,7 +412,7 @@ export function DocumentComposer({
     setOriginalWeight((prev) => prev !== undefined ? prev : patient.weight_kg)
   }, [patient?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Block management ────────────────────────────────────────────────
+  // †”€†”€ Block management †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
   const updateBlockContent = useCallback(
     (blockId: string, content: string) => {
       setBlocks((prev) =>
@@ -493,13 +464,8 @@ export function DocumentComposer({
     })
   }, [])
 
-  // ── Template management ─────────────────────────────────────────────
+  // †”€†”€ Template management †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
   const handleSaveTemplate = () => {
-    if (docType !== 'custom') {
-      toast.error('Save as Template is available only for Custom Document type')
-      return
-    }
-
     const templateName = docTitle.trim()
     if (!templateName) {
       toast.error('Enter a title first. The title is used as the template name.')
@@ -550,20 +516,36 @@ export function DocumentComposer({
     }
   }
 
-  // ── Document type change ────────────────────────────────────────────
+  // †”€†”€ Document type change †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
   const handleDocTypeChange = (type: DocumentType) => {
     setSelectedTemplateId(null)
     setDocType(type)
-    // Only reset blocks if all content is empty (fresh start)
-    const hasContent = blocks.some((b) => b.content.trim())
-    if (!hasContent) {
-      setBlocks(defaultBlocksForType(type))
-      setAiEnhancedBlocks(null)
-      setAiRawResult(null)
-    }
+    setBlocks(defaultBlocksForType(type))
+    setAiEnhancedBlocks(null)
+    setAiRawResult(null)
   }
 
-  // ── AI Actions ──────────────────────────────────────────────────────
+  // †”€†”€ AI Actions †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
+  // ── Step navigation helpers ─────────────────────────────────────────────
+  // quick_note and custom skip Step 2 (patient measurements) — not needed for these types
+  const SKIP_MEASUREMENTS = docType === 'quick_note' || docType === 'custom'
+
+  const handleNextStep = useCallback(() => {
+    if (step === 1 && (docType === 'quick_note' || docType === 'custom')) {
+      setStep(3)
+    } else {
+      setStep((s) => Math.min(s + 1, 4) as 1 | 2 | 3 | 4)
+    }
+  }, [step, docType])
+
+  const handlePrevStep = useCallback(() => {
+    if (step === 3 && (docType === 'quick_note' || docType === 'custom')) {
+      setStep(1)
+    } else {
+      setStep((s) => Math.max(s - 1, 1) as 1 | 2 | 3 | 4)
+    }
+  }, [step, docType])
+
   const callAI = async (action: 'enhance' | 'patient_friendly' | 'suggest') => {
     const contentText = blocks
       .filter((b) => b.type !== 'title' && b.type !== 'patient_snapshot')
@@ -626,8 +608,19 @@ export function DocumentComposer({
 
         const rawSections = aiResult.split(/^##\s+/m).filter(Boolean)
 
-        // Safety: AI returned unstructured text — show raw output only, never touch blocks
+        // Safety: AI returned unstructured text — for single-block docs apply directly
         if (rawSections.length === 0) {
+          const editableForSingle = blocks.filter((b) => b.type !== 'title' && b.type !== 'patient_snapshot')
+          if (editableForSingle.length === 1) {
+            const singleEnhanced = blocks.map((b) => {
+              if (b.type === 'title' || b.type === 'patient_snapshot') return b
+              return { ...b, content: stripMarkdown(aiResult) }
+            })
+            setAiEnhancedBlocks(singleEnhanced)
+            setStep(4)
+            toast.success('AI enhancement ready — review below, then apply or discard')
+            return
+          }
           setAiRawResult(stripMarkdown(aiResult))
           setAiEnhancedBlocks(null)
           setShowPreview(true)
@@ -635,7 +628,7 @@ export function DocumentComposer({
           return
         }
 
-        // Build label→content map for label-based matching
+        // Build label††’content map for label-based matching
         const sectionMap: Record<string, string> = {}
         for (const raw of rawSections) {
           const newlineIdx = raw.indexOf('\n')
@@ -683,10 +676,10 @@ export function DocumentComposer({
               return updated
             })()
 
-        // Stage in preview — original editor blocks remain unchanged
+        // Navigate to Preview step so user can immediately see and review AI output
         setAiEnhancedBlocks(enhanced)
-        setShowPreview(true)
-        toast.success('AI enhancement ready — review in preview, then apply')
+        setStep(4)
+        toast.success('AI enhancement ready — review below, then apply or discard')
       }
     } catch {
       toast.error('Failed to reach AI service. Please try again.')
@@ -697,7 +690,7 @@ export function DocumentComposer({
     }
   }
 
-  // ── Apply / Discard AI enhanced result ──────────────────────────────
+  // †”€†”€ Apply / Discard AI enhanced result †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
   const handleApplyAIChanges = useCallback(() => {
     if (!aiEnhancedBlocks) return
     setBlocks(aiEnhancedBlocks)
@@ -713,33 +706,23 @@ export function DocumentComposer({
     toast('AI changes discarded')
   }, [])
 
-  // ── Download PDF ────────────────────────────────────────────────────
+  // †”€†”€ Download PDF †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
   const handleDownloadPDF = async () => {
     if (!patient) { toast.error('No patient selected'); return }
     if (!docTitle.trim()) { toast.error('Please enter a document title'); return }
-
-    // Ensure the preview section is open so the DOM node is mounted
-    if (!showPreview) {
-      setShowPreview(true)
-      // Wait one tick for React to flush the state update and mount the element
-      await new Promise<void>((resolve) => setTimeout(resolve, 150))
-    }
-
-    const previewEl = previewContentRef.current
-    if (!previewEl) {
-      toast.error('Preview is not available — please expand the preview section and try again.')
-      return
-    }
 
     setPdfPending(true)
     try {
       const [saveResult, dtData] = await Promise.all([performSave(), fetchDietitianData()])
       if (saveResult.error) { toast.error(saveResult.error); return }
 
-      await downloadDocumentAsPDF({
+      const previewBlks = aiEnhancedBlocks ?? blocks
+      await downloadPDFFromServer({
         docTitle,
+        documentType: docType,
         dietitian: dtData,
-        previewElement: previewEl,
+        patientSnapshot: includePatientInfo ? liveSnapshotData : null,
+        blocks: previewBlks.filter((b) => b.type !== 'title' && b.type !== 'patient_snapshot'),
       })
       clearDraft()
       toast.success('PDF downloaded successfully')
@@ -753,23 +736,11 @@ export function DocumentComposer({
     }
   }
 
-  // ── Send via WhatsApp ────────────────────────────────────────────────
+  // †”€†”€ Send via WhatsApp †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
   const handleWhatsApp = async () => {
     if (!patient) { toast.error('No patient selected'); return }
     if (!docTitle.trim()) { toast.error('Please enter a document title'); return }
     if (!patient.phone) { toast.error('No phone number on file for this patient'); return }
-
-    // Ensure the preview section is open so the DOM node is mounted
-    if (!showPreview) {
-      setShowPreview(true)
-      await new Promise<void>((resolve) => setTimeout(resolve, 150))
-    }
-
-    const previewEl = previewContentRef.current
-    if (!previewEl) {
-      toast.error('Preview is not available — please expand the preview section and try again.')
-      return
-    }
 
     setWaPending(true)
     try {
@@ -783,10 +754,13 @@ export function DocumentComposer({
       const [saveResult, dtData] = await Promise.all([performSave(), fetchDietitianData()])
       if (saveResult.error) { toast.error(saveResult.error); return }
 
-      const { blob: pdfBlob, filename: baseFilename } = await generateDocumentAsPDFBlob({
+      const previewBlks = aiEnhancedBlocks ?? blocks
+      const { blob: pdfBlob, filename: baseFilename } = await generatePDFBlobFromServer({
         docTitle,
+        documentType: docType,
         dietitian: dtData,
-        previewElement: previewEl,
+        patientSnapshot: includePatientInfo ? liveSnapshotData : null,
+        blocks: previewBlks.filter((b) => b.type !== 'title' && b.type !== 'patient_snapshot'),
       })
 
       if (pdfBlob.size > WHATSAPP_MAX_UPLOAD_BYTES) {
@@ -866,8 +840,12 @@ export function DocumentComposer({
 
       const phone = patient.phone.replace(/\D/g, '')
       const clinicDisplay = dtData.clinicName || 'our clinic'
+      const docLabel = docType === 'meal_plan' ? 'diet plan'
+        : docType === 'follow_up_recommendation' ? 'follow-up document'
+        : docType === 'quick_note' ? 'clinical note'
+        : 'document'
       const message =
-        `Hello ${patient.full_name},\n\nYour diet plan from ${clinicDisplay} is ready.\n\nDownload it securely here: ${signedUrlData.signedUrl}\n\nThis link expires in 7 days.\n\nGenerated by ${dtData.name}`
+        `Hello ${patient.full_name},\n\nYour ${docLabel} from ${clinicDisplay} is ready.\n\nDownload it securely here: ${signedUrlData.signedUrl}\n\nThis link expires in 7 days.\n\nGenerated by ${dtData.name}`
       window.open(
         `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
         '_blank',
@@ -885,7 +863,7 @@ export function DocumentComposer({
     }
   }
 
-  // ── Save visit measurements to patient profile ────────────────────────
+  // †”€†”€ Save visit measurements to patient profile †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
   const handleSaveMeasurements = async () => {
     if (!patient) return
     const h = visitHeight.trim() ? parseFloat(visitHeight) : undefined
@@ -937,7 +915,7 @@ export function DocumentComposer({
             previous_weight_kg: prevW,
             new_weight_kg: newW,
             change: `${sign}${diff.toFixed(1)} kg`,
-            note: `Weight updated: ${prevW} kg → ${newW} kg (${sign}${diff.toFixed(1)} kg)`,
+            note: `Weight updated: ${prevW} kg to ${newW} kg (${sign}${diff.toFixed(1)} kg)`,
           } as unknown as Json,
         })
       }
@@ -952,8 +930,8 @@ export function DocumentComposer({
     }
   }
 
-  // ── Lazy-fetch dietitian profile (for PDF header / footer) ─────────
-  const fetchDietitianData = async (): Promise<DietitianPDFData> => {
+  // †”€†”€ Lazy-fetch dietitian profile (for PDF header / footer) †”€†”€†”€†”€†”€†”€†”€†”€†”€
+  const fetchDietitianData = async (): Promise<PDFDietitianData> => {
     if (dietitianPDFData) return dietitianPDFData
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -963,7 +941,7 @@ export function DocumentComposer({
       supabase.from('dietitian_practice').select('clinic_name, practice_address, city, state, logo_url').eq('dietitian_id', user!.id).single(),
     ])
     const addressParts = [pr.data?.practice_address, pr.data?.city, pr.data?.state].filter(Boolean)
-    const data: DietitianPDFData = {
+    const data: PDFDietitianData = {
       name: d.data?.full_name ?? '',
       qualification: p.data?.primary_qualification ?? '',
       licenseNumber: p.data?.registration_number ?? '',
@@ -977,7 +955,7 @@ export function DocumentComposer({
     return data
   }
 
-  // ── Shared: build the save payload (used by all three save actions) ─
+  // †”€†”€ Shared: build the save payload (used by all three save actions) †”€
   const buildSavePayload = () => {
     if (!patient || !docTitle.trim()) return null
     const contentBlocks = sanitizeContentBlocks(blocks)
@@ -996,7 +974,7 @@ export function DocumentComposer({
     }
   }
 
-  // ── Perform save without navigation (shared by all three actions) ────
+  // †”€†”€ Perform save without navigation (shared by all three actions) †”€†”€†”€†”€
   const performSave = async (): Promise<{ error?: string }> => {
     const payload = buildSavePayload()
     if (!payload) return { error: 'Missing patient or document title' }
@@ -1005,7 +983,7 @@ export function DocumentComposer({
       : createClinicalNote(payload)
   }
 
-  // ── Save ─────────────────────────────────────────────────────────────
+  // †”€†”€ Save †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
   const handleSave = () => {
     if (!patient) {
       toast.error('No patient selected')
@@ -1028,7 +1006,7 @@ export function DocumentComposer({
     })
   }
 
-  // ── Compose content for preview ─────────────────────────────────────
+  // †”€†”€ Compose content for preview †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
   // When AI has a staged result, the preview shows it; the editor blocks are untouched
   const previewBlocks = aiEnhancedBlocks ?? blocks
   const previewContent = previewBlocks
@@ -1053,629 +1031,186 @@ export function DocumentComposer({
       }).content) as PatientSnapshotData)
     : null
 
+
+  // †”€†”€ Step labels †”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€†”€
+  const STEP_LABELS = ['TYPE', 'PATIENT', 'CONTENT', 'PREVIEW'] as const
+
   return (
-    <div className="space-y-5 max-w-4xl">
-      {/* ══════════════ Section 1: Document Type ══════════════ */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Document Type</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Type</Label>
-              <Select
-                value={selectedTemplateId ?? docType}
-                onValueChange={(v) => {
-                  if (!v) return
-                  const isTemplate = localTemplates.some((t) => t.id === v)
-                  if (isTemplate) {
-                    handleLoadTemplate(v)
-                  } else {
-                    setSelectedTemplateId(null)
-                    handleDocTypeChange(v as DocumentType)
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <span className="text-sm">
-                    {selectedTemplateId
-                      ? (localTemplates.find((t) => t.id === selectedTemplateId)?.name ?? DOC_TYPE_LABELS[docType] ?? docType)
-                      : (DOC_TYPE_LABELS[docType] ?? docType)}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="quick_note">Quick Note</SelectItem>
-                  <SelectItem value="meal_plan">Meal Plan</SelectItem>
-                  <SelectItem value="follow_up_recommendation">Follow-up Recommendation</SelectItem>
-                  <SelectItem value="custom">Custom Document</SelectItem>
-                  {localTemplates.length > 0 && (
-                    <>
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1 pt-2">
-                        Custom Templates
-                      </div>
-                      {localTemplates
-                        .slice()
-                        .sort((a, b) => a.name.localeCompare(b.name))
-                        .map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.name}
-                          </SelectItem>
-                        ))}
-                    </>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+    <div className="max-w-3xl mx-auto pb-36 lg:pb-10">
 
-            <div className="space-y-1.5">
-              <Label htmlFor="doc-title">
-                Title <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="doc-title"
-                placeholder="e.g. Weight Loss Meal Plan – Week 1"
-                value={docTitle}
-                onChange={(e) => setDocTitle(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-start gap-2.5 rounded-md border bg-muted/20 p-3">
-            <Checkbox
-              id="include-patient-info"
-              checked={includePatientInfo}
-              onCheckedChange={(checked) => setIncludePatientInfo(checked === true)}
-              className="mt-0.5"
-            />
-            <div className="space-y-0.5">
-              <Label htmlFor="include-patient-info" className="cursor-pointer">
-                Include Patient Information in document print/PDF
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Enabled by default. Uncheck for quick notes or custom documents where patient details are not needed.
-              </p>
-            </div>
-          </div>
-
-        </CardContent>
-      </Card>
-
-      {/* ══════════════ Section 2: Patient Context ══════════════ */}
-      {patient && (
-        <CollapsibleSection
-          title={patient.full_name}
-          subtitle={`${patient.patient_code} · ${patient.phone}`}
-          icon={
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-              <User className="h-5 w-5" />
-            </div>
-          }
-          className="clay-card"
-        >
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {[
-              { label: 'Age', value: computeAge(patient.date_of_birth) },
-              { label: 'Gender', value: patient.gender ?? 'N/A' },
-              {
-                label: 'Height',
-                value: patient.height_cm ? `${patient.height_cm} cm` : 'N/A',
-              },
-              {
-                label: 'Weight',
-                value: patient.weight_kg ? `${patient.weight_kg} kg` : 'N/A',
-              },
-              { label: 'Primary Goal', value: patient.primary_goal ?? 'N/A' },
-              {
-                label: 'Activity Level',
-                value: patient.activity_level?.replace(/_/g, ' ') ?? 'N/A',
-              },
-              { label: 'Dietary Type', value: patient.dietary_type ?? 'N/A' },
-              {
-                label: 'Medical Conditions',
-                value: patient.medical_conditions?.join(', ') || 'None',
-              },
-              {
-                label: 'Food Allergies',
-                value: patient.food_allergies?.join(', ') || 'None',
-              },
-            ].map((item) => (
-              <div key={item.label}>
-                <p className="text-xs text-muted-foreground">{item.label}</p>
-                <p className="text-sm font-medium capitalize">{item.value}</p>
-              </div>
-            ))}
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {/* ══════════════ Section 2b: Visit Measurements ══════════════ */}
-      {patient && (
-        <CollapsibleSection
-          title="Visit Measurements"
-          subtitle="Record today's anthropometry and save timeline updates"
-          icon={<Ruler className="h-4 w-4 text-primary" />}
-          className="clay-card"
-          defaultOpen={false}
-          contentClassName="space-y-4"
-        >
-            <p className="text-xs text-muted-foreground">
-              Record today&apos;s measurements. Click <strong>Save Measurements</strong> to update the patient profile and log the weight change to the timeline.
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="visit-height">Height (cm)</Label>
-                <Input
-                  id="visit-height"
-                  type="number"
-                  min={50}
-                  max={270}
-                  step={0.1}
-                  placeholder={patient.height_cm?.toString() ?? 'e.g. 165'}
-                  value={visitHeight}
-                  onChange={(e) => setVisitHeight(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="visit-weight">Weight (kg)</Label>
-                  {visitWeight && patient.weight_kg !== null &&
-                    !isNaN(parseFloat(visitWeight)) &&
-                    Math.abs(parseFloat(visitWeight) - (patient.weight_kg ?? 0)) > 0.01 && (
-                    <span className={cn(
-                      'text-xs font-medium',
-                      parseFloat(visitWeight) < (patient.weight_kg ?? 0) ? 'text-primary' : 'text-amber-600'
-                    )}>
-                      {parseFloat(visitWeight) < (patient.weight_kg ?? 0) ? '▼' : '▲'}{' '}
-                      {Math.abs(parseFloat(visitWeight) - (patient.weight_kg ?? 0)).toFixed(1)} kg
-                    </span>
-                  )}
-                </div>
-                <Input
-                  id="visit-weight"
-                  type="number"
-                  min={20}
-                  max={350}
-                  step={0.1}
-                  placeholder={patient.weight_kg?.toString() ?? 'e.g. 65'}
-                  value={visitWeight}
-                  onChange={(e) => setVisitWeight(e.target.value)}
-                />
-                {originalWeight !== undefined && originalWeight !== null && (
-                  <p className="text-xs text-muted-foreground">Previous: {originalWeight} kg</p>
-                )}
-              </div>
-            </div>
-
-            {/* Live BMI / IBW preview */}
-            {visitWeight && visitHeight &&
-              !isNaN(parseFloat(visitWeight)) && !isNaN(parseFloat(visitHeight)) && (
-              <div className="flex flex-wrap gap-4 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                <span>
-                  BMI:{' '}
-                  <strong className="text-foreground">
-                    {computeBMI(parseFloat(visitWeight), parseFloat(visitHeight))}
-                  </strong>
-                </span>
-                <span>
-                  Ideal Body Weight:{' '}
-                  <strong className="text-foreground">
-                    {computeIBW(parseFloat(visitHeight), patient.gender) !== 'N/A'
-                      ? `${computeIBW(parseFloat(visitHeight), patient.gender)} kg`
-                      : 'N/A'}
-                  </strong>
-                </span>
-                {visitWeight && originalWeight != null && !isNaN(parseFloat(visitWeight)) && (
-                  <span>
-                    Change from last visit:{' '}
-                    <strong className={cn(
-                      parseFloat(visitWeight) < originalWeight ? 'text-primary' : 'text-amber-600'
-                    )}>
-                      {parseFloat(visitWeight) === originalWeight
-                        ? 'No change'
-                        : `${parseFloat(visitWeight) > originalWeight ? '+' : ''}${(parseFloat(visitWeight) - originalWeight).toFixed(1)} kg`}
-                    </strong>
-                  </span>
-                )}
-              </div>
-            )}
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={isSavingMeasurements}
-              onClick={handleSaveMeasurements}
-              className="gap-1.5"
-            >
-              {isSavingMeasurements ? (
-                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</>
-              ) : (
-                <><CheckCircle2 className="h-3.5 w-3.5 text-primary" /> Save Measurements</>
-              )}
-            </Button>
-        </CollapsibleSection>
-      )}
-
-      {/* ══════════════ Section 3: Structured Document Editor ══════════════ */}
-      <CollapsibleSection
-        title="Document Content"
-        subtitle="Build and reorder sections for this document"
-        count={blocks.length}
-        className="clay-card"
-        defaultOpen
-        contentClassName="space-y-2.5"
-      >
-        <div className="mb-2.5 flex justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            onClick={addBlock}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Add Section
-          </Button>
-        </div>
-          {blocks.map((block, idx) => {
-            return (
+      {/* †•†•†•†•†•†•†•†•†•†•†•†•†•†• Progress Bar †•†•†•†•†•†•†•†•†•†•†•†•†•†• */}
+      <div className="mb-6 px-1">
+        <div className="flex gap-1.5 mb-2">
+          {STEP_LABELS.map((_, i) => (
             <div
-              key={block.id}
-              className="group rounded-lg border bg-background px-3 py-2.5 space-y-1.5"
-            >
-              <div className="flex items-center gap-2">
-                <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
-                <Input
-                  value={block.label}
-                  onChange={(e) => updateBlockLabel(block.id, e.target.value)}
-                  className="h-8 text-sm font-medium border-0 bg-transparent px-1 focus-visible:ring-1"
-                  placeholder="Section name"
-                />
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    type="button"
-                    onClick={() => moveBlock(block.id, 'up')}
-                    disabled={idx === 0}
-                    className="rounded p-1 hover:bg-muted disabled:opacity-30"
-                    title="Move up"
-                  >
-                    <ArrowUp className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveBlock(block.id, 'down')}
-                    disabled={idx === blocks.length - 1}
-                    className="rounded p-1 hover:bg-muted disabled:opacity-30"
-                    title="Move down"
-                  >
-                    <ArrowDown className="h-3.5 w-3.5" />
-                  </button>
-                  {blocks.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeBlock(block.id)}
-                      className="rounded p-1 hover:bg-destructive/10 text-destructive"
-                      title="Remove section"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-              <Textarea
-                value={block.content}
-                onChange={(e) => updateBlockContent(block.id, e.target.value)}
-                placeholder={
-                    block.type === 'instructions'
-                      ? 'e.g. Drink 3L water daily, avoid refined sugar…'
-                      : `Enter ${block.label.toLowerCase()} details…`
-                }
-                  rows={4}
-                className="resize-none"
-              />
+              key={i}
+              className={cn(
+                'h-1.5 flex-1 rounded-full transition-colors duration-300',
+                step > i + 1 ? 'bg-primary' : step === i + 1 ? 'bg-primary' : 'bg-primary/20'
+              )}
+            />
+          ))}
+        </div>
+        <div className="flex">
+          {STEP_LABELS.map((label, i) => (
+            <div key={i} className="flex-1 text-center">
+              <span className={cn(
+                'text-[10px] font-medium tracking-wide',
+                step === i + 1 ? 'text-primary font-semibold' : 'text-primary/40'
+              )}>
+                {label}
+              </span>
             </div>
-          )
-        })}
-      </CollapsibleSection>
+          ))}
+        </div>
+      </div>
 
-      {/* ══════════════ Section 4: AI Assistance ══════════════ */}
-      <CollapsibleSection
-        title="AI Assistance"
-        subtitle="Enhance, simplify, or suggest plan content"
-        icon={<Sparkles className="h-4 w-4 text-primary" />}
-        className="clay-card"
-        defaultOpen={false}
-        contentClassName="space-y-3"
-      >
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              disabled={aiLoading !== null}
-              onClick={() => callAI('enhance')}
-            >
-              {aiLoading === 'enhance' ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-              )}
-              {aiLoading === 'enhance' ? 'Enhancing…' : 'Enhance with AI'}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              disabled={aiLoading !== null}
-              onClick={() => callAI('patient_friendly')}
-            >
-              {aiLoading === 'patient_friendly' ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Heart className="h-3.5 w-3.5 text-pink-500" />
-              )}
-              {aiLoading === 'patient_friendly' ? 'Formatting…' : 'Format for Patient'}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              disabled={aiLoading !== null}
-              onClick={() => callAI('suggest')}
-            >
-              {aiLoading === 'suggest' ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
-              )}
-              {aiLoading === 'suggest' ? 'Generating…' : 'AI Suggestions'}
-            </Button>
-          </div>
+      {/* †•†•†•†•†•†•†•†•†•†•†•†•†•†• Step 1: Document Type †•†•†•†•†•†•†•†•†•†•†•†•†•†• */}
+      <div className={cn(step !== 1 && 'hidden')}>
+        <StepTypeSelection
+          docType={docType}
+          docTitle={docTitle}
+          includePatientInfo={includePatientInfo}
+          selectedTemplateId={selectedTemplateId}
+          localTemplates={localTemplates}
+          onDocTypeChange={(v) => {
+            const isTemplate = localTemplates.some((t) => t.id === v)
+            if (isTemplate) handleLoadTemplate(v)
+            else { setSelectedTemplateId(null); handleDocTypeChange(v as DocumentType) }
+          }}
+          onTitleChange={setDocTitle}
+          onIncludePatientInfoChange={setIncludePatientInfo}
+        />
+      </div>
 
-          {/* AI fallback warning */}
-          {aiMeta?.isFallback === true && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
-              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-amber-800">
-                  AI could not fully process this. Showing limited or fallback results.
-                </p>
-                {aiMeta.reason && ['timeout', 'parse_failed', 'invalid_structure'].includes(aiMeta.reason) && (
-                  <p className="text-xs text-amber-700 mt-0.5 capitalize">
-                    Reason: {aiMeta.reason.replace(/_/g, ' ')}
-                  </p>
-                )}
-              </div>
-              {lastAiAction && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 gap-1.5"
-                  onClick={() => callAI(lastAiAction)}
-                  disabled={aiLoading !== null}
-                >
-                  {aiLoading !== null ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <RotateCcw className="h-3.5 w-3.5" />
-                  )}
-                  Retry AI
-                </Button>
-              )}
-            </div>
-          )}
+      {/* †•†•†•†•†•†•†•†•†•†•†•†•†•†• Step 2: Patient + Measurements †•†•†•†•†•†•†•†•†•†•†•†•†•†• */}
+      <div className={cn(step !== 2 && 'hidden')}>
+        <StepPatientMeasurements
+          patient={patient}
+          visitHeight={visitHeight}
+          visitWeight={visitWeight}
+          originalWeight={originalWeight}
+          isSavingMeasurements={isSavingMeasurements}
+          onVisitHeightChange={setVisitHeight}
+          onVisitWeightChange={setVisitWeight}
+          onSaveMeasurements={handleSaveMeasurements}
+        />
+      </div>
 
-          {aiSuggestions && (
-            <div className="rounded-lg border bg-amber-50 p-4 text-sm">
-              <div className="flex items-center justify-between mb-2">
-                <p className="font-medium text-amber-800 flex items-center gap-1.5">
-                  <Lightbulb className="h-4 w-4" />
-                  AI Suggestions
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setAiSuggestions(null)}
-                  className="text-amber-600 hover:text-amber-800"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="whitespace-pre-wrap text-amber-900">{aiSuggestions}</div>
-            </div>
-          )}
+      {/* †•†•†•†•†•†•†•†•†•†•†•†•†•†• Step 3: Document Content †•†•†•†•†•†•†•†•†•†•†•†•†•†• */}
+      <div className={cn(step !== 3 && 'hidden')}>
+        <StepContentEditor
+          blocks={blocks}
+          onUpdateContent={updateBlockContent}
+          onUpdateLabel={updateBlockLabel}
+          onAddBlock={addBlock}
+          onRemoveBlock={removeBlock}
+          onMoveBlock={moveBlock}
+          aiLoading={aiLoading}
+          aiSuggestions={aiSuggestions}
+          aiEnhancedBlocks={aiEnhancedBlocks}
+          aiRawResult={aiRawResult}
+          aiMeta={aiMeta}
+          lastAiAction={lastAiAction}
+          showAISheet={showAISheet}
+          step={step}
+          onCallAI={callAI}
+          onApplyAI={handleApplyAIChanges}
+          onDiscardAI={handleDiscardAIChanges}
+          onSetAiSuggestions={setAiSuggestions}
+          onToggleAISheet={setShowAISheet}
+        />
+      </div>
 
-          {/* AI enhancement pending — Apply or Discard */}
-          {(aiEnhancedBlocks || aiRawResult) && (
-            <div className="rounded-lg border border-primary/30 bg-primary/10 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-primary" />
-                <p className="text-sm font-medium text-primary">AI enhancement ready</p>
-              </div>
-              <p className="text-xs text-primary/85">
-                Your original content is unchanged. Review the preview below, then decide.
-              </p>
-              <div className="flex items-center gap-2">
-                {aiEnhancedBlocks && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleApplyAIChanges}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Apply AI Changes
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDiscardAIChanges}
-                  className="gap-1.5"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  Discard
-                </Button>
-              </div>
-            </div>
-          )}
-      </CollapsibleSection>
+      {/* †•†•†•†•†•†•†•†•†•†•†•†•†•†• Step 4: Preview †•†•†•†•†•†•†•†•†•†•†•†•†•†• */}
+      <div className={cn(step !== 4 && 'hidden')}>
+        <StepPreview
+          docTitle={docTitle}
+          docType={docType}
+          includePatientInfo={includePatientInfo}
+          liveSnapshotData={liveSnapshotData}
+          previewContent={previewContent}
+          previewContentRef={previewContentRef}
+          aiEnhancedBlocks={aiEnhancedBlocks}
+          aiRawResult={aiRawResult}
+          isPending={isPending}
+          pdfPending={pdfPending}
+          waPending={waPending}
+          patient={patient}
+          onSaveTemplate={handleSaveTemplate}
+          onDownloadPDF={handleDownloadPDF}
+          onWhatsApp={handleWhatsApp}
+        />
+      </div>
 
-      {/* ══════════════ Section 5: Document Preview ══════════════ */}
-      <Card>
-        <CardHeader className="pb-3">
-          <button
-            type="button"
-            className="flex items-center justify-between w-full"
-            onClick={() => setShowPreview((v) => !v)}
-          >
-            <CardTitle className="text-base flex items-center gap-2">
-              <Eye className="h-4 w-4 text-muted-foreground" />
-              Document Preview
-            </CardTitle>
-            {showPreview ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
-          </button>
-        </CardHeader>
-        {showPreview && (
-          <CardContent>
-            <div ref={previewContentRef} className="clay-card p-6 space-y-4">
-              {/* AI indicator banner */}
-              {(aiEnhancedBlocks || aiRawResult) && (
-                <div className="flex items-center gap-2 rounded-md bg-primary/10 border border-primary/30 px-3 py-2">
-                  <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span className="text-xs font-medium text-primary/90">
-                    {aiRawResult
-                      ? 'AI output (unstructured) — editor unchanged'
-                      : 'AI Enhanced Preview — your editor content is unchanged'}
-                  </span>
-                </div>
-              )}
-
-              {/* Document title */}
-              <h2 className="text-xl font-bold leading-tight">
-                {docTitle || <span className="text-muted-foreground italic font-normal text-base">Untitled Document</span>}
-              </h2>
-
-              {/* Patient snapshot header */}
-              {includePatientInfo && liveSnapshotData && (
-                <div className="rounded-md border bg-slate-50 p-4 space-y-3" data-pdf-block="section">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-800">Patient Information</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5">
-                    {[
-                      { label: 'Name', value: liveSnapshotData.name },
-                      { label: 'Age', value: liveSnapshotData.age },
-                      { label: 'Gender', value: liveSnapshotData.gender },
-                      { label: 'Height', value: liveSnapshotData.height },
-                      { label: 'Current Weight', value: liveSnapshotData.weight },
-                      { label: 'BMI', value: liveSnapshotData.bmi },
-                      { label: 'Ideal Body Weight', value: liveSnapshotData.ibw },
-                      { label: 'Weight Difference', value: liveSnapshotData.weightDiff },
-                      { label: 'Previous Visit Weight', value: liveSnapshotData.previousWeight },
-                      { label: 'Weight Change (This Visit)', value: liveSnapshotData.weightChange },
-                      { label: 'Primary Goal', value: liveSnapshotData.primaryGoal },
-                      { label: 'Activity Level', value: liveSnapshotData.activityLevel },
-                      { label: 'Medical Conditions', value: liveSnapshotData.medicalConditions },
-                      { label: 'Food Allergies', value: liveSnapshotData.foodAllergies },
-                    ].map((item) => (
-                      <div key={item.label}>
-                        <p className="text-xs font-bold text-slate-700">{item.label}</p>
-                        <p className="text-xs font-normal capitalize mt-0.5">{item.value}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Unstructured AI output (raw fallback) */}
-              {aiRawResult && (
-                <div className="rounded-md border border-secondary/40 bg-secondary/20 p-4 text-sm text-secondary-foreground whitespace-pre-wrap" data-pdf-block="section">
-                  {aiRawResult}
-                </div>
-              )}
-
-              {/* Document sections */}
-              <div
-                className="prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: previewContent }}
-              />
-            </div>
-          </CardContent>
-        )}
-      </Card>
-
-      {/* ══════════════ Actions ══════════════ */}
-      <div className="flex flex-wrap items-center gap-3 pb-8">
+      {/* †•†•†•†•†•†•†•†•†•†•†•†•†•†• Desktop inline nav (all steps) †•†•†•†•†•†•†•†•†•†•†•†•†•†• */}
+      <div className="hidden lg:flex items-center justify-between mt-6">
         <Button
           type="button"
-          disabled={isPending || pdfPending || waPending || !patient}
-          onClick={handleSave}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 rounded-full px-5"
+          variant="outline"
+          onClick={() => step === 1 ? router.back() : handlePrevStep()}
+          className="gap-2 rounded-full px-6"
         >
-          {isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
-          {isEditMode ? 'Update Document' : 'Save Document'}
+          {step === 1 ? 'Cancel' : (<><ArrowLeft className="h-4 w-4" /> Back</>)}
         </Button>
-        {docType === 'custom' && (
+        {step < 4 ? (
+          <Button
+            type="button"
+            onClick={handleNextStep}
+            className="gap-2 rounded-full px-8 bg-primary hover:bg-primary/85 text-white"
+          >
+            {step === 1
+              ? SKIP_MEASUREMENTS ? 'Next: Content' : 'Next: Patient'
+              : step === 2 ? 'Next: Content'
+              : 'Next: Preview'}
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            disabled={isPending || pdfPending || waPending || !patient}
+            onClick={handleSave}
+            className="gap-2 rounded-full px-8 bg-primary hover:bg-primary/85 text-white"
+          >
+            {isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : <><Save className="h-4 w-4" /> Save Document</>}
+          </Button>
+        )}
+      </div>
+
+      {/* †•†•†•†•†•†•†•†•†•†•†•†•†•†• Mobile fixed bottom nav †•†•†•†•†•†•†•†•†•†•†•†•†•†• */}
+      <div className="fixed inset-x-0 bottom-16 z-50 lg:hidden bg-white border-t border-outline-variant shadow-lg px-4 py-3">
+        <div className="flex gap-3">
           <Button
             type="button"
             variant="outline"
-            disabled={isPending || pdfPending || waPending}
-            onClick={handleSaveTemplate}
-            className="gap-2"
+            onClick={() => step === 1 ? router.back() : handlePrevStep()}
+            className="flex-1 h-12 rounded-xl border-primary/30 text-primary font-semibold gap-2"
           >
-            <BookmarkPlus className="h-4 w-4" />
-            Save as Template
+            {step === 1 ? 'Cancel' : (<><ArrowLeft className="h-4 w-4" /> Back</>)}
           </Button>
-        )}
-        <Button
-          type="button"
-          variant="outline"
-          disabled={isPending || pdfPending || waPending || !patient}
-          onClick={handleDownloadPDF}
-          className="gap-2"
-        >
-          {pdfPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+          {step < 4 ? (
+            <Button
+              type="button"
+              onClick={handleNextStep}
+              className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/85 text-white font-semibold"
+            >
+              {step === 1
+                ? SKIP_MEASUREMENTS ? 'Next: Content' : 'Next: Patient'
+                : step === 2 ? 'Next: Content'
+                : 'Next: Preview'}
+            </Button>
           ) : (
-            <Download className="h-4 w-4" />
+            <Button
+              type="button"
+              disabled={isPending || pdfPending || waPending || !patient}
+              onClick={handleSave}
+              className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/85 text-white font-semibold gap-2"
+            >
+              {isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : <><Save className="h-4 w-4" /> Save Document</>}
+            </Button>
           )}
-          Download PDF
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={isPending || pdfPending || waPending || !patient}
-          onClick={handleWhatsApp}
-          className="gap-2"
-        >
-          {waPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <MessageCircle className="h-4 w-4 text-green-600" />
-          )}
-          Send via WhatsApp
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.back()}
-          disabled={isPending || pdfPending || waPending}
-        >
-          Cancel
-        </Button>
+        </div>
       </div>
+
     </div>
   )
 }

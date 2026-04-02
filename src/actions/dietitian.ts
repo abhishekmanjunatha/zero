@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { Tables } from '@/types/database'
 import type { Json } from '@/types/database'
+import { emitNotification } from '@/lib/notifications/server'
 
 async function getAuthUser() {
   const supabase = await createClient()
@@ -63,6 +64,15 @@ export async function updateBasicInfo(data: {
     .eq('id', user.id)
 
   if (error) return { error: error.message }
+
+  await emitNotification(supabase, {
+    dietitianId: user.id,
+    type: 'profile_updated',
+    title: 'Profile updated',
+    message: 'Basic profile details were updated',
+    actionUrl: '/profile',
+  })
+
   revalidatePath('/profile')
   revalidatePath('/dashboard')
   return { success: true }
@@ -94,6 +104,15 @@ export async function updateProfessionalDetails(data: {
   )
 
   if (error) return { error: error.message }
+
+  await emitNotification(supabase, {
+    dietitianId: user.id,
+    type: 'professional_profile_updated',
+    title: 'Professional details updated',
+    message: 'Qualification, experience, or specialization details changed',
+    actionUrl: '/profile',
+  })
+
   revalidatePath('/profile')
   return { success: true }
 }
@@ -146,6 +165,15 @@ export async function updatePracticeDetails(data: {
   }
 
   if (error) return { error: error.message }
+
+  await emitNotification(supabase, {
+    dietitianId: user.id,
+    type: 'practice_updated',
+    title: 'Practice details updated',
+    message: data.clinic_name || 'Practice information updated',
+    actionUrl: '/profile',
+  })
+
   revalidatePath('/profile')
   return { success: true }
 }
@@ -177,6 +205,19 @@ export async function updateAvailability(data: {
   })
 
   if (error) return { error: error.message }
+
+  await emitNotification(supabase, {
+    dietitianId: user.id,
+    type: 'availability_updated',
+    title: 'Availability updated',
+    message: 'Consultation slots were updated',
+    actionUrl: '/profile',
+    metadata: {
+      slot_duration: data.slot_duration,
+      buffer_time: data.buffer_time,
+    } as Json,
+  })
+
   revalidatePath('/profile')
   return { success: true }
 }

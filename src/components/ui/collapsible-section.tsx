@@ -47,7 +47,7 @@ export function CollapsibleSection({
             <p className="truncate text-sm font-semibold text-foreground">
               {title}
               {typeof count === "number" && (
-                <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
                   {count}
                 </span>
               )}

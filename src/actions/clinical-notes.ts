@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import type { Tables, Json } from '@/types/database'
 import type { CreateClinicalNoteInput } from '@/lib/validations/clinical-note'
 import { createClinicalNoteSchema } from '@/lib/validations/clinical-note'
+import { emitNotification } from '@/lib/notifications/server'
 
 async function ensurePatientOwnedByDietitian(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -130,6 +131,19 @@ export async function createClinicalNote(
     reference_id: noteId,
   })
 
+  await emitNotification(supabase, {
+    dietitianId: user.id,
+    patientId: parsed.data.patient_id,
+    type: 'clinical_document_created',
+    title: 'Clinical document created',
+    message: parsed.data.title,
+    actionUrl: `/clinical-notes/${noteId}`,
+    metadata: {
+      note_id: noteId,
+      document_type: parsed.data.document_type,
+    } as Json,
+  })
+
   revalidatePath('/clinical-notes')
   revalidatePath('/dashboard')
   revalidatePath(`/patients/${parsed.data.patient_id}`)
@@ -199,6 +213,20 @@ export async function updateClinicalNote(
   if (error) {
     return { error: error.message }
   }
+
+  await emitNotification(supabase, {
+    dietitianId: user.id,
+    patientId: parsed.data.patient_id,
+    type: 'clinical_document_updated',
+    title: 'Clinical document updated',
+    message: parsed.data.title,
+    actionUrl: `/clinical-notes/${noteId}`,
+    metadata: {
+      note_id: noteId,
+      document_type: parsed.data.document_type,
+      version: currentVersion + 1,
+    } as Json,
+  })
 
   revalidatePath('/clinical-notes')
   revalidatePath('/dashboard')

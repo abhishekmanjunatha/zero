@@ -5,10 +5,8 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
-  Search,
   User,
   UserPlus,
-  X,
   CalendarDays,
   Clock,
   Loader2,
@@ -35,7 +33,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { useDebounce } from '@/hooks/use-debounce'
+import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { createClient } from '@/lib/supabase/client'
 import {
   createAppointmentSchema,
@@ -43,11 +41,12 @@ import {
 } from '@/lib/validations/appointment'
 import { createAppointment, getAvailableSlots } from '@/actions/appointments'
 import { PatientForm } from '@/components/patients/patient-form'
-import { ContactPickerButton } from '@/components/shared/contact-picker-button'
+import { PatientLookup } from '@/components/shared/patient-lookup'
 import {
   getCurrentDateInTimeZone,
   getCurrentTimeInTimeZone,
 } from '@/lib/utils/timezone'
+import { ResponsiveDatePicker } from '@/components/ui/responsive-date-picker'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -55,7 +54,7 @@ interface PatientResult {
   id: string
   full_name: string
   patient_code: string
-  phone: string
+  phone: string | null
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -69,10 +68,6 @@ export function CreateAppointmentForm() {
 
   // Patient search state
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<PatientResult[]>([])
-  const [searchLoading, setSearchLoading] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(false)
-  const debouncedSearch = useDebounce(searchQuery, 300)
 
   // Selected patient
   const [selectedPatient, setSelectedPatient] = useState<PatientResult | null>(null)
@@ -106,6 +101,7 @@ export function CreateAppointmentForm() {
     },
   })
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const watchMode = watch('mode')
   const watchPurpose = watch('purpose')
   const watchDate = watch('appointment_date')
@@ -128,34 +124,6 @@ export function CreateAppointmentForm() {
     }
     fetchPatient()
   }, [preselectedPatientId, setValue])
-
-  // ── Patient search ───────────────────────────────────────────────────
-  useEffect(() => {
-    if (!debouncedSearch.trim()) {
-      setSearchResults([])
-      setSearchOpen(false)
-      return
-    }
-    const search = async () => {
-      setSearchLoading(true)
-      try {
-        const supabase = createClient()
-        const term = debouncedSearch.trim()
-        const { data } = await supabase
-          .from('patients')
-          .select('id, full_name, patient_code, phone')
-          .or(`full_name.ilike.%${term}%,patient_code.ilike.%${term}%,phone.ilike.%${term}%`)
-          .limit(8)
-        setSearchResults((data as PatientResult[]) ?? [])
-        setSearchOpen(true)
-      } catch {
-        setSearchResults([])
-      } finally {
-        setSearchLoading(false)
-      }
-    }
-    search()
-  }, [debouncedSearch])
 
   // ── Fetch available slots when date changes ──────────────────────────
   useEffect(() => {
@@ -182,7 +150,6 @@ export function CreateAppointmentForm() {
     setSelectedPatient(patient)
     setValue('patient_id', patient.id)
     setSearchQuery('')
-    setSearchOpen(false)
     setShowCreatePatientDialog(false)
   }
 
@@ -255,75 +222,13 @@ export function CreateAppointmentForm() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Search */}
-            <div className="relative">
-              <div className="relative flex items-center">
-                <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search by name, phone, or patient ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onFocus={() => {
-                    if (searchResults.length > 0) setSearchOpen(true)
-                  }}
-                  className="h-11 w-full rounded-2xl border bg-background pl-9 pr-16 text-sm outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted-foreground"
-                  autoComplete="off"
-                />
-                <ContactPickerButton
-                  className="absolute right-10 h-7 w-7 p-0"
-                  ariaLabel="Pick contact to search patient"
-                  onContactPicked={({ phone }) => {
-                    setSearchQuery(phone)
-                    setSearchOpen(false)
-                  }}
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery('')
-                      setSearchOpen(false)
-                    }}
-                    className="absolute right-3 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-
-              {/* Search results dropdown */}
-              {searchOpen && (
-                <div className="absolute top-full z-50 mt-1 w-full rounded-lg border bg-popover shadow-md">
-                  {searchLoading && (
-                    <div className="px-4 py-3 text-sm text-muted-foreground">Searching…</div>
-                  )}
-                  {!searchLoading && searchResults.length === 0 && searchQuery.trim() && (
-                    <div className="px-4 py-3 text-sm text-muted-foreground">
-                      No patients found for &ldquo;{searchQuery}&rdquo;
-                    </div>
-                  )}
-                  {!searchLoading &&
-                    searchResults.map((patient) => (
-                      <button
-                        key={patient.id}
-                        type="button"
-                        className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-accent transition-colors"
-                        onClick={() => handleSelectPatient(patient)}
-                      >
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{patient.full_name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {patient.patient_code} · {patient.phone}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                </div>
-              )}
-            </div>
+            <PatientLookup
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+              onSelect={handleSelectPatient}
+              placeholder="Search by name, phone, or patient ID..."
+              emptyMessage={searchQuery.trim() ? `No patients found for "${searchQuery}"` : 'No patients found'}
+            />
 
             {/* Add New Patient button */}
             <Button
@@ -332,7 +237,6 @@ export function CreateAppointmentForm() {
               className="gap-2"
               onClick={() => {
                 setShowCreatePatientDialog(true)
-                setSearchOpen(false)
               }}
             >
               <UserPlus className="h-4 w-4" />
@@ -475,11 +379,17 @@ export function CreateAppointmentForm() {
                   <Label htmlFor="appointment_date">
                     Date <span className="text-destructive">*</span>
                   </Label>
-                  <Input
-                    id="appointment_date"
-                    type="date"
-                    min={clinicToday}
-                    {...register('appointment_date')}
+                  <Controller
+                    control={control}
+                    name="appointment_date"
+                    render={({ field }) => (
+                      <ResponsiveDatePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        min={clinicToday}
+                        sheetTitle="Select appointment date"
+                      />
+                    )}
                   />
                   {errors.appointment_date && (
                     <p className="text-xs text-destructive">{errors.appointment_date.message}</p>
@@ -545,15 +455,20 @@ export function CreateAppointmentForm() {
             )}
 
             {/* Notes */}
-            <div className="space-y-1.5">
-              <Label htmlFor="notes">Notes (optional)</Label>
+            <CollapsibleSection
+              title="Additional Notes"
+              subtitle="Optional"
+              defaultOpen={false}
+              className="rounded-xl border border-outline-variant"
+              contentClassName="px-4 pb-4"
+            >
               <Textarea
                 id="notes"
                 placeholder="Any additional notes for this appointment..."
                 rows={3}
                 {...register('notes')}
               />
-            </div>
+            </CollapsibleSection>
           </CardContent>
         </Card>
       )}
@@ -637,19 +552,21 @@ export function CreateAppointmentForm() {
       )}
 
       <Dialog open={showCreatePatientDialog} onOpenChange={setShowCreatePatientDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-hidden p-0">
+          <DialogHeader className="border-b px-6 py-4">
             <DialogTitle>Create New Patient</DialogTitle>
             <DialogDescription>
               Add a patient and continue booking the appointment.
             </DialogDescription>
           </DialogHeader>
-          <PatientForm
-            mode="create"
-            onSuccess={handleInlinePatientCreated}
-            embedded
-            onCancel={() => setShowCreatePatientDialog(false)}
-          />
+          <div className="max-h-[calc(90vh-92px)] overflow-y-auto px-6 py-5">
+            <PatientForm
+              mode="create"
+              onSuccess={handleInlinePatientCreated}
+              embedded
+              onCancel={() => setShowCreatePatientDialog(false)}
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </form>

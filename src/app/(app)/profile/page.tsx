@@ -11,12 +11,14 @@ export default async function ProfilePage() {
   if (!data.dietitian) redirect('/onboarding/basic-profile')
 
   return (
-    <ProfileSettings
-      dietitian={data.dietitian}
-      professional={data.professional}
-      practice={data.practice}
-      availability={data.availability}
-      email={data.email}
-    />
+    <div className="app-page">
+      <ProfileSettings
+        dietitian={data.dietitian}
+        professional={data.professional}
+        practice={data.practice}
+        availability={data.availability}
+        email={data.email}
+      />
+    </div>
   )
 }

@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { deleteLabReport, saveAiAnalysis } from '@/actions/lab-reports'
+import { ManualMetricsForm } from '@/components/lab-reports/manual-metrics-form'
 import type { Tables } from '@/types/database'
 
 interface LabReportDetailProps {
@@ -40,6 +41,7 @@ interface Metric {
   value: string
   status: 'normal' | 'low' | 'high' | 'critical'
   reference?: string
+  source?: 'ai' | 'manual'
 }
 
 interface Observation {
@@ -163,11 +165,18 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
         observations: data.observations ?? [],
       })
 
-      // Save to DB
+      // Save to DB — preserve manual metrics alongside AI metrics
+      const manualMetrics = aiObservations.metrics.filter((m) => m.source === 'manual')
+      const mergedMetrics = [...(data.metrics ?? []).map((m: Metric) => ({ ...m, source: 'ai' as const })), ...manualMetrics]
       await saveAiAnalysis(report.id, data.summary ?? '', {
-        metrics: data.metrics ?? [],
+        metrics: mergedMetrics,
         observations: data.observations ?? [],
       })
+      // Update local state with merged
+      setAiObservations((prev) => ({
+        ...prev,
+        metrics: mergedMetrics,
+      }))
       toast.success('AI analysis complete')
     } catch {
       toast.error('Failed to analyze report')
@@ -190,7 +199,7 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="app-page max-w-4xl">
       {/* Back + header */}
       <div className="flex items-center gap-3">
         <Link
@@ -202,9 +211,9 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
         </Link>
       </div>
 
-      <div className="flex items-start justify-between flex-wrap gap-3">
+      <div className="app-surface flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{report.title}</h1>
+          <h1 className="app-title">{report.title}</h1>
           <div className="flex items-center gap-3 mt-1.5 flex-wrap">
             {report.report_type && (
               <Badge variant="secondary" className="text-xs font-normal capitalize">
@@ -244,7 +253,7 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
 
       {/* Patient info */}
       {report.patient && (
-        <Card>
+        <Card className="rounded-2xl border border-border/40 bg-card/95 shadow-sm">
           <CardContent className="flex items-center gap-3 py-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
               <User className="h-4 w-4" />
@@ -258,7 +267,7 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
       )}
 
       {/* Files */}
-      <Card>
+      <Card className="rounded-2xl border border-border/40 bg-card/95 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Report Files</CardTitle>
         </CardHeader>
@@ -310,7 +319,7 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
       </Card>
 
       {/* AI Analysis */}
-      <Card>
+      <Card className="rounded-2xl border border-border/40 bg-card/95 shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
@@ -409,7 +418,12 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
                           const StatusIcon = STATUS_ICONS[m.status] ?? Minus
                           return (
                             <tr key={i}>
-                              <td className="px-3 py-2 font-medium">{m.name}</td>
+                              <td className="px-3 py-2 font-medium">
+                                {m.name}
+                                {m.source === 'manual' && (
+                                  <span className="ml-1.5 inline-flex rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">Manual</span>
+                                )}
+                              </td>
                               <td className="px-3 py-2">{m.value}</td>
                               <td className="px-3 py-2">
                                 <span
@@ -462,6 +476,42 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
               )}
             </>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Manual Metrics Entry */}
+      <Card className="rounded-2xl border border-border/40 bg-card/95 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Activity className="h-4 w-4 text-emerald-500" />
+            Manual Lab Metrics
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">Enter metrics from physical lab reports. These are saved alongside AI-extracted data and feed into patient AI insights.</p>
+        </CardHeader>
+        <CardContent>
+          <ManualMetricsForm
+            reportId={report.id}
+            existingManualMetrics={
+              aiObservations.metrics
+                .filter((m) => m.source === 'manual')
+                .map((m) => ({
+                  name: m.name,
+                  value: m.value,
+                  unit: '',
+                  status: m.status,
+                  reference: m.reference ?? '',
+                }))
+            }
+            onSaved={(saved) => {
+              setAiObservations((prev) => ({
+                ...prev,
+                metrics: [
+                  ...prev.metrics.filter((m) => m.source !== 'manual'),
+                  ...saved.map((m) => ({ ...m, source: 'manual' as const })),
+                ],
+              }))
+            }}
+          />
         </CardContent>
       </Card>
     </div>

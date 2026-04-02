@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Patient Profile | Elena Rodriguez</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-error-container": "#93000a",
+              "secondary-container": "#d1e2f1",
+              "surface-container": "#edeeef",
+              "surface-container-low": "#f3f4f5",
+              "secondary-fixed-dim": "#b8c9d8",
+              "on-secondary-fixed": "#0d1d28",
+              "outline": "#707880",
+              "on-primary-fixed-variant": "#004b72",
+              "surface-container-highest": "#e1e3e4",
+              "outline-variant": "#c0c7d0",
+              "on-tertiary-fixed-variant": "#005312",
+              "on-secondary": "#ffffff",
+              "inverse-on-surface": "#f0f1f2",
+              "surface-tint": "#006496",
+              "on-secondary-container": "#556572",
+              "on-primary-fixed": "#001e31",
+              "tertiary-container": "#1e6f26",
+              "tertiary-fixed-dim": "#88d982",
+              "surface-container-high": "#e7e8e9",
+              "surface-bright": "#f8f9fa",
+              "error-container": "#ffdad6",
+              "surface-dim": "#d9dadb",
+              "on-secondary-fixed-variant": "#394955",
+              "tertiary": "#005513",
+              "primary-fixed-dim": "#90cdff",
+              "background": "#f8f9fa",
+              "on-primary": "#ffffff",
+              "on-tertiary-container": "#9cf096",
+              "on-primary-container": "#bfe0ff",
+              "on-background": "#191c1d",
+              "surface-container-lowest": "#ffffff",
+              "error": "#ba1a1a",
+              "secondary-fixed": "#d4e5f4",
+              "primary": "#004d75",
+              "surface": "#f8f9fa",
+              "primary-container": "#006699",
+              "on-surface": "#191c1d",
+              "inverse-surface": "#2e3132",
+              "surface-variant": "#e1e3e4",
+              "secondary": "#50606d",
+              "inverse-primary": "#90cdff",
+              "on-tertiary-fixed": "#002204",
+              "tertiary-fixed": "#a3f69c",
+              "on-error": "#ffffff",
+              "primary-fixed": "#cce5ff",
+              "on-tertiary": "#ffffff",
+              "on-surface-variant": "#40484f"
+            },
+            fontFamily: {
+              "headline": ["Manrope", "sans-serif"],
+              "body": ["Inter", "sans-serif"],
+              "label": ["Inter", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "1.5rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; color: #191c1d; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .font-headline { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-background selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar (Shared Component) -->
+<aside class="fixed left-0 top-0 h-full flex flex-col py-6 px-4 bg-slate-100 dark:bg-slate-900 border-r border-slate-200/50 dark:border-slate-800/50 w-64 z-50">
+<div class="mb-10 px-4">
+<h1 class="text-xl font-bold text-sky-900 dark:text-sky-100 font-headline">MedSuite</h1>
+<p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1">Clinical Precision</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 font-manrope text-sm font-medium hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-800 text-sky-900 dark:text-sky-100 rounded-lg shadow-sm font-bold font-manrope text-sm transition-all scale-98 active:opacity-80" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+                Patients
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 font-manrope text-sm font-medium hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+                Appointments
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 font-manrope text-sm font-medium hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+                Templates
+            </a>
+</nav>
+<div class="mt-auto space-y-2">
+<button class="w-full mb-6 py-3 px-4 bg-primary text-white rounded-xl font-headline font-bold text-sm shadow-sm hover:opacity-90 transition-all">
+                Quick Action
+            </button>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 font-manrope text-sm font-medium hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                Settings
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 font-manrope text-sm font-medium hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                Support
+            </a>
+<div class="pt-6 mt-6 border-t border-slate-200/50 flex items-center gap-3 px-2">
+<img alt="Dr. Smith" class="w-10 h-10 rounded-full object-cover bg-slate-300" data-alt="Portrait of a professional doctor in clinical attire, soft studio lighting, neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3hjgpNJEnZMdVcNglZc1ie2hUutzf0y2Hin-BL0zsHHGdmhSTp-JWvk8Y-ckPs021cCLjom8sa2stK9loDWOUIgu56djHtu7lePUBeMLtKiCcFjKFrW7ux8FwU0NVEUQUrrBjq9UTSjnvDQWejpUzHFWX0dli6_Y4l-Ypbp0gMhpyNVqNB-U_8n1No04tNDgleKXZ40MITA9sCHHp22Dyyyw_n486gOOuOIRFlYuIk2_u5gquCDQk17fsO_EWtxyF-pB1_CBbew"/>
+<div class="overflow-hidden">
+<p class="text-sm font-bold text-sky-900 truncate">Dr. Smith</p>
+<p class="text-[10px] text-slate-500 truncate">Senior Clinician</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- TopNavBar (Shared Component) -->
+<header class="fixed top-0 right-0 left-64 z-40 flex justify-between items-center px-8 h-16 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-900">
+<div class="flex items-center gap-6 w-1/3">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg" data-icon="search">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all font-body" placeholder="Search patients, records..." type="text"/>
+</div>
+</div>
+<nav class="flex items-center gap-8 h-full">
+<a class="text-sky-900 dark:text-sky-100 font-bold border-b-2 border-sky-900 dark:border-sky-400 pb-2 font-manrope text-sm h-full flex items-center mt-4" href="#">Summary</a>
+<a class="text-slate-500 dark:text-slate-400 pb-2 font-manrope text-sm h-full flex items-center mt-4 hover:text-sky-700 transition-colors" href="#">Health Info</a>
+<a class="text-slate-500 dark:text-slate-400 pb-2 font-manrope text-sm h-full flex items-center mt-4 hover:text-sky-700 transition-colors" href="#">Appointments</a>
+<a class="text-slate-500 dark:text-slate-400 pb-2 font-manrope text-sm h-full flex items-center mt-4 hover:text-sky-700 transition-colors" href="#">Clinical Notes</a>
+<a class="text-slate-500 dark:text-slate-400 pb-2 font-manrope text-sm h-full flex items-center mt-4 hover:text-sky-700 transition-colors" href="#">Lab Reports</a>
+<a class="text-slate-500 dark:text-slate-400 pb-2 font-manrope text-sm h-full flex items-center mt-4 hover:text-sky-700 transition-colors" href="#">Timeline</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded-full transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded-full transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-16 min-h-screen bg-surface-container-low px-8 pb-12">
+<div class="max-w-7xl mx-auto py-8">
+<!-- Patient Overview Header -->
+<section class="bg-surface-container-lowest rounded-xl p-8 flex items-center justify-between mb-6 shadow-sm border border-transparent">
+<div class="flex items-center gap-8">
+<div class="relative">
+<img alt="Elena Rodriguez" class="w-32 h-32 rounded-xl object-cover shadow-lg border-4 border-white" data-alt="Close-up portrait of Elena Rodriguez, a 42-year-old woman with a kind expression, soft natural lighting, high-end photography style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFVhoCqNyu5jaGgb2Q1TReUgavFMpBK5ayLL8dzR33-UZep8yv9bcKKjt0M7NVp94f4zOBfqnpen69YfhXMAqS8JN1yBTonmAD2t_9QERU7w4RmoYx5LMEcMML-KSd56zMNd4vlqj4gRAJ4oRw246F5eSQ3SvM3-aYSUr_RRZ83Pg7Eo8O3MlX6myZYL_jhCnSNvXeRFkTXaNchuDWUd9VXOSouYd-JlL70pk7vFOD3jXGIsIWVidtgr_c8Fbi8J3IoPjwhkc4Pg"/>
+<div class="absolute -bottom-2 -right-2 bg-tertiary text-white w-8 h-8 rounded-full flex items-center justify-center border-2 border-white">
+<span class="material-symbols-outlined text-sm" data-icon="verified" data-weight="fill" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</div>
+<div>
+<div class="flex items-center gap-3 mb-1">
+<h2 class="text-3xl font-extrabold font-headline text-on-surface tracking-tight">Elena Rodriguez</h2>
+<span class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-xs font-bold font-label">Active Patient</span>
+</div>
+<div class="flex flex-col gap-1">
+<p class="text-on-surface-variant font-medium flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="fingerprint">fingerprint</span>
+                                Patient ID: <span class="text-on-surface font-bold">SC-9021-X</span>
+</p>
+<p class="text-on-surface-variant font-medium flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="call">call</span>
+                                Phone: <span class="text-on-surface font-bold">555-012-3456</span>
+</p>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end gap-2">
+<p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Next Scheduled Visit</p>
+<p class="text-xl font-headline font-bold text-primary">Nov 14, 2023 · 09:30 AM</p>
+<div class="flex gap-2 mt-2">
+<div class="w-2 h-2 rounded-full bg-tertiary"></div>
+<div class="w-2 h-2 rounded-full bg-tertiary/30"></div>
+<div class="w-2 h-2 rounded-full bg-tertiary/30"></div>
+</div>
+</div>
+</section>
+<!-- Action Bar -->
+<section class="flex items-center justify-between mb-8">
+<div class="flex items-center gap-3">
+<button class="bg-tertiary text-white px-6 py-3 rounded-xl font-headline font-bold text-sm flex items-center gap-2 shadow-sm hover:opacity-90 transition-all active:scale-95">
+<span class="material-symbols-outlined text-lg" data-icon="add_circle">add_circle</span>
+                        Add Appointment
+                    </button>
+<button class="bg-surface-container-lowest text-on-surface-variant border border-outline-variant/20 px-5 py-3 rounded-xl font-headline font-bold text-sm flex items-center gap-2 hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined text-lg" data-icon="note_add">note_add</span>
+                        Clinical Document
+                    </button>
+<button class="bg-surface-container-lowest text-on-surface-variant border border-outline-variant/20 px-5 py-3 rounded-xl font-headline font-bold text-sm flex items-center gap-2 hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined text-lg" data-icon="upload_file">upload_file</span>
+                        Upload Lab Report
+                    </button>
+</div>
+<button class="w-12 h-12 flex items-center justify-center bg-surface-container-lowest text-on-surface rounded-xl border border-outline-variant/20 hover:bg-primary hover:text-white transition-all shadow-sm">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+</section>
+<!-- Tabbed Interface (Main Navigation Pivot) -->
+<div class="flex items-center gap-8 mb-8 border-b border-outline-variant/10 overflow-x-auto no-scrollbar">
+<button class="pb-4 text-primary font-extrabold border-b-[3px] border-primary px-2 whitespace-nowrap font-headline transition-all">Summary</button>
+<button class="pb-4 text-on-surface-variant font-medium px-2 whitespace-nowrap font-headline hover:text-primary transition-all">Health Info</button>
+<button class="pb-4 text-on-surface-variant font-medium px-2 whitespace-nowrap font-headline hover:text-primary transition-all flex items-center gap-2">
+                    Appointments <span class="bg-surface-container-high text-on-surface-variant text-[10px] px-2 py-0.5 rounded-full font-bold">12</span>
+</button>
+<button class="pb-4 text-on-surface-variant font-medium px-2 whitespace-nowrap font-headline hover:text-primary transition-all">Clinical Notes</button>
+<button class="pb-4 text-on-surface-variant font-medium px-2 whitespace-nowrap font-headline hover:text-primary transition-all">Lab Reports</button>
+<button class="pb-4 text-on-surface-variant font-medium px-2 whitespace-nowrap font-headline hover:text-primary transition-all">Timeline</button>
+</div>
+<!-- Summary Tab Content (Bento Grid) -->
+<div class="grid grid-cols-12 gap-6 items-start">
+<!-- Vital Statistics & Info -->
+<div class="col-span-8 grid grid-cols-2 gap-6">
+<div class="col-span-2 bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+<h3 class="text-lg font-headline font-extrabold text-on-surface mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="person_search">person_search</span>
+                            Core Demographics
+                        </h3>
+<div class="grid grid-cols-3 gap-y-8 gap-x-12">
+<div>
+<label class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block mb-1">Full Name</label>
+<p class="text-on-surface font-semibold">Elena Rodriguez</p>
+</div>
+<div>
+<label class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block mb-1">Patient ID</label>
+<p class="text-on-surface font-semibold">SC-9021-X</p>
+</div>
+<div>
+<label class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block mb-1">Phone Number</label>
+<p class="text-on-surface font-semibold">555-012-3456</p>
+</div>
+<div>
+<label class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block mb-1">Age / Gender</label>
+<p class="text-on-surface font-semibold">42y / Female</p>
+</div>
+<div>
+<label class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block mb-1">Height / Weight</label>
+<p class="text-on-surface font-semibold">168 cm / 64 kg</p>
+</div>
+<div>
+<label class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block mb-1">Primary Goal</label>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed px-3 py-1 rounded-full text-xs font-bold">Muscle Gain</span>
+</div>
+<div>
+<label class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block mb-1">Last Visit</label>
+<p class="text-on-surface font-semibold">Oct 12, 2023</p>
+</div>
+<div>
+<label class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block mb-1">Patient Since</label>
+<p class="text-on-surface font-semibold">Jan 20, 2021</p>
+</div>
+<div>
+<label class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block mb-1">Blood Type</label>
+<p class="text-on-surface font-semibold">O Positive (O+)</p>
+</div>
+</div>
+</div>
+<!-- Clinical Insight Card -->
+<div class="col-span-2 bg-primary text-white rounded-xl p-8 shadow-md relative overflow-hidden">
+<!-- Subtle Background Pattern -->
+<div class="absolute top-0 right-0 p-8 opacity-10">
+<span class="material-symbols-outlined text-[120px]" data-icon="insights">insights</span>
+</div>
+<div class="relative z-10">
+<h3 class="text-xl font-headline font-extrabold mb-4 flex items-center gap-3">
+<span class="material-symbols-outlined" data-icon="lightbulb" data-weight="fill" style="font-variation-settings: 'FILL' 1;">lightbulb</span>
+                                Clinical Insight Summary
+                            </h3>
+<p class="text-primary-fixed leading-relaxed max-w-2xl font-body">
+                                Patient has shown consistent improvement in metabolic markers over the last 3 months. Muscle mass has increased by 1.2kg while maintaining steady cardiovascular health. Adherence to prescribed physiotherapy protocol is at 85%. Recommended to maintain current caloric intake and increase resistance training intensity by 10% in the next cycle.
+                            </p>
+<div class="mt-6 flex items-center gap-6">
+<div class="flex flex-col">
+<span class="text-[10px] uppercase font-bold tracking-widest text-primary-fixed/60">Compliance Rating</span>
+<span class="text-2xl font-headline font-black">8.4<span class="text-sm font-normal opacity-70">/10</span></span>
+</div>
+<div class="w-px h-10 bg-white/20"></div>
+<div class="flex flex-col">
+<span class="text-[10px] uppercase font-bold tracking-widest text-primary-fixed/60">Next Milestone</span>
+<span class="text-lg font-headline font-bold">Body Comp Review</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Side Sidebar Widgets -->
+<div class="col-span-4 flex flex-col gap-6">
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+<h4 class="text-sm font-headline font-extrabold text-on-surface mb-4 flex items-center justify-between">
+                            Allergies
+                            <span class="material-symbols-outlined text-error text-lg" data-icon="warning">warning</span>
+</h4>
+<div class="flex flex-wrap gap-2">
+<span class="bg-error-container text-on-error-container px-3 py-1.5 rounded-lg text-xs font-bold">Penicillin</span>
+<span class="bg-error-container text-on-error-container px-3 py-1.5 rounded-lg text-xs font-bold">Peanuts</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+<h4 class="text-sm font-headline font-extrabold text-on-surface mb-4">Medications (Active)</h4>
+<ul class="space-y-4">
+<li class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="pill">pill</span>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Lisinopril 10mg</p>
+<p class="text-[10px] text-on-surface-variant font-medium">Daily · Morning</p>
+</div>
+</li>
+<li class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="pill">pill</span>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Metformin 500mg</p>
+<p class="text-[10px] text-on-surface-variant font-medium">Daily · With Dinner</p>
+</div>
+</li>
+</ul>
+<button class="w-full mt-4 text-[10px] font-bold text-primary uppercase tracking-widest py-2 hover:bg-primary-fixed/20 rounded-lg transition-all">View All Medications</button>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-tertiary/10">
+<h4 class="text-sm font-headline font-extrabold text-on-surface mb-4">Recent Lab Trends</h4>
+<div class="space-y-4">
+<div>
+<div class="flex justify-between items-end mb-1">
+<span class="text-xs font-bold text-on-surface-variant">Hemoglobin A1c</span>
+<span class="text-xs font-black text-tertiary">5.4%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-[54%]"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-end mb-1">
+<span class="text-xs font-bold text-on-surface-variant">Total Cholesterol</span>
+<span class="text-xs font-black text-on-surface">182 mg/dL</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-[70%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Quick-Note Action (Contextual Tooltip Style) -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-all z-50">
+<span class="material-symbols-outlined text-2xl" data-icon="edit_note">edit_note</span>
+</button>
+</body></html>

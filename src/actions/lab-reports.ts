@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { Tables, Json } from '@/types/database'
 import { UPLOAD_TOKEN_EXPIRY_HOURS } from '@/lib/constants/app'
+import { emitNotification } from '@/lib/notifications/server'
 
 async function ensurePatientOwnedByDietitian(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -176,6 +177,20 @@ export async function uploadLabReport(input: {
     console.error('[LabReports] uploadLabReport timeline insert error:', timelineError.message)
   }
 
+  await emitNotification(supabase, {
+    dietitianId: user.id,
+    patientId: input.patient_id,
+    type: 'lab_report_uploaded',
+    title: 'Lab report uploaded',
+    message: input.title.trim(),
+    actionUrl: `/patients/${input.patient_id}?tab=labs`,
+    metadata: {
+      report_id: reportId,
+      report_type: input.report_type ?? 'other',
+      source: 'dietitian',
+    } as Json,
+  })
+
   revalidatePath('/lab-reports')
   revalidatePath('/dashboard')
   revalidatePath(`/patients/${input.patient_id}`)
@@ -306,6 +321,67 @@ export async function deleteLabReport(
   const { error } = await supabase
     .from('lab_reports')
     .delete()
+    .eq('id', reportId)
+    .eq('dietitian_id', user.id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/lab-reports')
+  revalidatePath('/dashboard')
+  revalidatePath(`/patients/${(reportRow as { patient_id: string }).patient_id}`)
+
+  return {}
+}
+
+// ── Save manual metrics (merge with existing AI metrics) ────────────────────
+
+export async function saveManualMetrics(
+  reportId: string,
+  metrics: { name: string; value: string; unit?: string; status: string; reference?: string }[]
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  if (metrics.length > 20) return { error: 'Maximum 20 metrics allowed' }
+
+  const { data: reportRow } = await supabase
+    .from('lab_reports')
+    .select('patient_id, ai_observations')
+    .eq('id', reportId)
+    .eq('dietitian_id', user.id)
+    .maybeSingle()
+
+  if (!reportRow) return { error: 'Lab report not found' }
+
+  // Parse existing observations to preserve AI-generated metrics
+  const existing = reportRow.ai_observations as { metrics?: unknown[]; observations?: unknown[] } | null
+  const aiMetrics = (existing?.metrics ?? []).filter(
+    (m): m is Record<string, unknown> =>
+      typeof m === 'object' && m !== null && (m as Record<string, unknown>).source !== 'manual'
+  )
+  const observations = existing?.observations ?? []
+
+  // Tag manual metrics with source
+  const manualMetrics = metrics.map((m) => ({
+    name: m.name.trim(),
+    value: m.value.trim(),
+    unit: m.unit?.trim() ?? '',
+    status: m.status,
+    reference: m.reference?.trim() ?? '',
+    source: 'manual' as const,
+  }))
+
+  const merged = {
+    metrics: [...aiMetrics, ...manualMetrics],
+    observations,
+  }
+
+  const { error } = await supabase
+    .from('lab_reports')
+    .update({ ai_observations: merged as unknown as Json })
     .eq('id', reportId)
     .eq('dietitian_id', user.id)
 

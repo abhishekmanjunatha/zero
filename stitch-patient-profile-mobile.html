@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Strive Clinical - Patient Profile</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-error": "#ffffff",
+              "tertiary-fixed": "#a3f69c",
+              "primary-fixed": "#cce5ff",
+              "on-tertiary": "#ffffff",
+              "on-surface-variant": "#40484f",
+              "surface-container-lowest": "#ffffff",
+              "error": "#ba1a1a",
+              "on-background": "#191c1d",
+              "on-tertiary-container": "#9cf096",
+              "on-primary-container": "#bfe0ff",
+              "on-primary": "#ffffff",
+              "primary-fixed-dim": "#90cdff",
+              "background": "#f8f9fa",
+              "tertiary": "#005513",
+              "on-tertiary-fixed": "#002204",
+              "surface-variant": "#e1e3e4",
+              "secondary": "#50606d",
+              "inverse-primary": "#90cdff",
+              "surface": "#f8f9fa",
+              "primary-container": "#006699",
+              "on-surface": "#191c1d",
+              "inverse-surface": "#2e3132",
+              "secondary-fixed": "#d4e5f4",
+              "primary": "#004d75",
+              "tertiary-container": "#1e6f26",
+              "surface-tint": "#006496",
+              "on-surface": "#191c1d",
+              "inverse-on-surface": "#f0f1f2",
+              "on-secondary-fixed-variant": "#394955",
+              "surface-dim": "#d9dadb",
+              "error-container": "#ffdad6",
+              "surface-bright": "#f8f9fa",
+              "surface-container-high": "#e7e8e9",
+              "tertiary-fixed-dim": "#88d982",
+              "surface-container": "#edeeef",
+              "secondary-container": "#d1e2f1",
+              "on-error-container": "#93000a",
+              "outline-variant": "#c0c7d0",
+              "on-tertiary-fixed-variant": "#005312",
+              "surface-container-highest": "#e1e3e4",
+              "outline": "#707880",
+              "on-primary-fixed-variant": "#004b72",
+              "surface-container-low": "#f3f4f5",
+              "secondary-fixed-dim": "#b8c9d8",
+              "on-secondary-fixed": "#0d1d28"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "3xl": "1.5rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .hide-scrollbar::-webkit-scrollbar { display: none; }
+      .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+      body {
+        min-height: max(884px, 100dvh);
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body antialiased">
+<header class="flex items-center justify-between w-full px-4 h-16 sticky top-0 z-50 bg-slate-50 dark:bg-slate-900">
+<div class="flex items-center gap-3">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-800/50 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-sky-900 dark:text-sky-300">arrow_back</span>
+</button>
+<h1 class="font-manrope font-bold text-lg tracking-tight text-sky-900 dark:text-sky-300">Patient Profile</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-800/50 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-sky-900 dark:text-sky-300">notifications</span>
+</button>
+<div class="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden border-2 border-white shadow-sm">
+<img class="w-full h-full object-cover" data-alt="portrait of a professional male doctor" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0mdbdNo7v_j1KBrpYyFAVNFFVIVbcFdkcPVv3egt2PjMBuEs386qyf5ifK48Ek8qM0c83nzXsaNV1iKhtrsnff01aS8EEwgnvwEgVfw59FegbKJFOs23UDWyUpaOhq_JtVbcO-GMLNOQMERNCul36zHqM4zPdomHBtN1tTTZmeDIRkI1JJcNZRHRUUt2Aw8ERiktuMg124LRVOINOAig-_hHZGUkB5IlcYS8NmqBbj0iAFLhLlWm2gsV0cBUjyewA604fHkdvJw"/>
+</div>
+</div>
+</header>
+<main class="pb-24">
+<section class="px-4 mt-2">
+<div class="bg-surface-container-lowest p-6 rounded-3xl shadow-[0_12px_32px_-4px_rgba(25,28,29,0.04)] flex flex-col items-center text-center">
+<div class="relative w-28 h-28 mb-4">
+<div class="w-full h-full rounded-3xl overflow-hidden shadow-inner">
+<img class="w-full h-full object-cover" data-alt="portrait of Elena Rodriguez" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiPvxMI9gHOCMlqN82tyJuEFm6qVbFj_Y1praKuNMQa9qHM6rMHcsiSjKUnLyzmgS7erpfrmHFkSkjBHVm3ZR1PIxW4r0WO5CoyWXeHhmMeAUL_MUOkn-ABb6oSmwfyZvZ3ajfvjNSMNw3dycyt9dleECg6mlUyvM6n_lsorDtoEKmwChejJokwNrf7rdnrq4h0V6rPV8wGWtKUo-PqdiNOOaB48n2nfwe0u0RapWfsi1-Citxrtv45qoNl5n8kWjoBKY12vP7og"/>
+</div>
+<div class="absolute -bottom-1 -right-1 bg-tertiary-fixed text-on-tertiary-fixed px-2 py-0.5 rounded-full text-[10px] font-bold border-2 border-white uppercase">
+                        Active
+                    </div>
+</div>
+<h2 class="font-headline font-extrabold text-2xl text-on-surface tracking-tight">Elena Rodriguez</h2>
+<div class="flex items-center gap-2 mt-1">
+<span class="text-on-surface-variant font-medium text-sm">ID: SC-9021-X</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant/50"></span>
+<span class="text-on-surface-variant font-medium text-sm">(555) 012-3456</span>
+</div>
+<div class="flex justify-center gap-4 mt-6 w-full">
+<button class="w-14 h-14 flex items-center justify-center bg-gradient-to-br from-tertiary to-tertiary-container text-white rounded-2xl shadow-lg active:scale-95 transition-all" title="Add Appointment">
+<span class="material-symbols-outlined text-[28px]">add_circle</span>
+</button>
+<button class="w-14 h-14 flex items-center justify-center bg-secondary-container text-on-secondary-container rounded-2xl active:scale-95 transition-all" title="Clinical Document">
+<span class="material-symbols-outlined text-[28px]">description</span>
+</button>
+<button class="w-14 h-14 flex items-center justify-center bg-secondary-container text-on-secondary-container rounded-2xl active:scale-95 transition-all" title="Upload Lab">
+<span class="material-symbols-outlined text-[28px]">upload_file</span>
+</button>
+<button class="w-14 h-14 flex items-center justify-center bg-secondary-container text-on-secondary-container rounded-2xl active:scale-95 transition-all" title="Edit">
+<span class="material-symbols-outlined text-[28px]">edit</span>
+</button>
+</div>
+</div>
+</section>
+<nav class="sticky top-16 bg-background z-40 mt-6">
+<div class="flex overflow-x-auto hide-scrollbar px-4 border-b border-outline-variant/10">
+<button class="flex-none px-4 py-4 text-sm font-bold text-primary border-b-2 border-primary whitespace-nowrap">Summary</button>
+<button class="flex-none px-4 py-4 text-sm font-medium text-on-surface-variant/70 whitespace-nowrap">Health Info</button>
+<button class="flex-none px-4 py-4 text-sm font-medium text-on-surface-variant/70 whitespace-nowrap">Appointments (12)</button>
+<button class="flex-none px-4 py-4 text-sm font-medium text-on-surface-variant/70 whitespace-nowrap">Clinical Notes (8)</button>
+<button class="flex-none px-4 py-4 text-sm font-medium text-on-surface-variant/70 whitespace-nowrap">Lab Reports</button>
+<button class="flex-none px-4 py-4 text-sm font-medium text-on-surface-variant/70 whitespace-nowrap">Timeline</button>
+</div>
+</nav>
+<section class="px-4 mt-6 space-y-4">
+<div class="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-outline-variant/5">
+<label class="block text-on-surface-variant text-[11px] uppercase tracking-widest font-bold mb-1">Full Name</label>
+<p class="font-headline font-bold text-lg text-on-surface">Elena Rodriguez</p>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-outline-variant/5">
+<label class="block text-on-surface-variant text-[11px] uppercase tracking-widest font-bold mb-1">Patient ID</label>
+<p class="font-bold text-primary">SC-9021-X</p>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-outline-variant/5">
+<label class="block text-on-surface-variant text-[11px] uppercase tracking-widest font-bold mb-1">Phone</label>
+<p class="font-bold text-on-surface">(555) 012-3456</p>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-outline-variant/5">
+<label class="block text-on-surface-variant text-[11px] uppercase tracking-widest font-bold mb-1">Age &amp; Gender</label>
+<p class="font-bold text-on-surface">42y, Female</p>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-outline-variant/5">
+<label class="block text-on-surface-variant text-[11px] uppercase tracking-widest font-bold mb-1">Height</label>
+<p class="font-headline font-extrabold text-xl text-primary-container">168 <span class="text-sm font-normal text-on-surface-variant">cm</span></p>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-outline-variant/5">
+<label class="block text-on-surface-variant text-[11px] uppercase tracking-widest font-bold mb-1">Weight</label>
+<p class="font-headline font-extrabold text-xl text-primary-container">64 <span class="text-sm font-normal text-on-surface-variant">kg</span></p>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-outline-variant/5">
+<label class="block text-on-surface-variant text-[11px] uppercase tracking-widest font-bold mb-1">Primary Goal</label>
+<div class="mt-1">
+<span class="inline-flex items-center bg-tertiary-fixed/40 text-on-tertiary-fixed px-3 py-1 rounded-full text-xs font-bold">
+                        Muscle Gain
+                    </span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-outline-variant/5">
+<label class="block text-on-surface-variant text-[11px] uppercase tracking-widest font-bold mb-1">Last Visit</label>
+<p class="font-bold text-on-surface">Oct 12, 2023</p>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-outline-variant/5">
+<label class="block text-on-surface-variant text-[11px] uppercase tracking-widest font-bold mb-1">Patient Since</label>
+<p class="font-bold text-on-surface">Jan 20, 2021</p>
+</div>
+<div class="bg-primary text-white p-5 rounded-3xl relative overflow-hidden">
+<div class="relative z-10">
+<h3 class="font-headline font-bold mb-1">Clinical Insight</h3>
+<p class="text-xs text-on-primary-container leading-relaxed">Elena has shown a 4% increase in lean muscle mass since the last evaluation. Recommended to maintain current protein intake.</p>
+</div>
+<div class="absolute -right-4 -bottom-4 opacity-10">
+<span class="material-symbols-outlined text-[120px]" style="font-variation-settings: 'FILL' 1;">analytics</span>
+</div>
+</div>
+</section>
+</main>
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-t border-slate-100/50 dark:border-slate-800/50 shadow-[0_-4px_20px_0_rgba(0,0,0,0.03)] rounded-t-3xl">
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-5 py-1.5 hover:text-sky-700 dark:hover:text-sky-300 tap-highlight-transparent active:opacity-80 transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-sky-100 dark:bg-sky-900/40 text-sky-900 dark:text-sky-100 rounded-2xl px-5 py-1.5 tap-highlight-transparent active:opacity-80 transition-all" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Patients</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-5 py-1.5 hover:text-sky-700 dark:hover:text-sky-300 tap-highlight-transparent active:opacity-80 transition-all" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Schedules</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-5 py-1.5 hover:text-sky-700 dark:hover:text-sky-300 tap-highlight-transparent active:opacity-80 transition-all" href="#">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span class="font-inter text-[11px] font-medium tracking-wide">Messages</span>
+</a>
+</nav>
+
+</body></html>

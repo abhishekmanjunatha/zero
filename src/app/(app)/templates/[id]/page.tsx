@@ -37,13 +37,7 @@ export default async function EditTemplatePage(props: {
   const blocks = normalizeBlocks(template.blocks)
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Edit Template</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Update block order and default text for this reusable custom template.
-        </p>
-      </div>
+    <div className="app-page">
       <TemplateEditor
         templateId={template.id}
         initialName={template.name}

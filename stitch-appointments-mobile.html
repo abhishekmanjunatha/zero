@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Strive Clinical - Appointments</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary-container": "#d1e2f1",
+              "on-secondary-fixed-variant": "#394955",
+              "surface-container-lowest": "#ffffff",
+              "surface-container-highest": "#e1e3e4",
+              "error": "#ba1a1a",
+              "surface-container": "#edeeef",
+              "on-primary": "#ffffff",
+              "on-error-container": "#93000a",
+              "background": "#f8f9fa",
+              "outline": "#707880",
+              "on-tertiary-fixed-variant": "#005312",
+              "secondary-fixed-dim": "#b8c9d8",
+              "outline-variant": "#c0c7d0",
+              "tertiary": "#005513",
+              "on-tertiary-fixed": "#002204",
+              "tertiary-fixed-dim": "#88d982",
+              "primary-container": "#006699",
+              "on-surface-variant": "#40484f",
+              "error-container": "#ffdad6",
+              "surface-variant": "#e1e3e4",
+              "surface-container-low": "#f3f4f5",
+              "inverse-on-surface": "#f0f1f2",
+              "on-secondary-fixed": "#0d1d28",
+              "surface-container-high": "#e7e8e9",
+              "primary-fixed": "#cce5ff",
+              "on-tertiary": "#ffffff",
+              "on-primary-fixed-variant": "#004b72",
+              "on-error": "#ffffff",
+              "inverse-surface": "#2e3132",
+              "tertiary-container": "#1e6f26",
+              "on-tertiary-container": "#9cf096",
+              "tertiary-fixed": "#a3f69c",
+              "inverse-primary": "#90cdff",
+              "on-secondary": "#ffffff",
+              "primary": "#004d75",
+              "primary-fixed-dim": "#90cdff",
+              "on-secondary-container": "#556572",
+              "on-primary-container": "#bfe0ff",
+              "surface": "#f8f9fa",
+              "secondary": "#50606d",
+              "on-primary-fixed": "#001e31",
+              "secondary-fixed": "#d4e5f4",
+              "surface-tint": "#006496",
+              "surface-bright": "#f8f9fa",
+              "on-surface": "#191c1d",
+              "surface-dim": "#d9dadb",
+              "on-background": "#191c1d"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "3xl": "1.5rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4 { font-family: 'Manrope', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-container-low text-on-surface min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-6 py-4 w-full sticky top-0 z-50 bg-white dark:bg-slate-900">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-secondary-fixed">
+<img alt="Clinician Profile" class="w-full h-full object-cover" data-alt="professional portrait of a confident male doctor in a white lab coat with a warm friendly smile, studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-DnXzjAVSVH0pVzmjZORze8RkwciGCdVFZnETpttzkJvnVDPF6ccoGgpfHJXA-uV0IdzQ5vmz5M4KEBg2EG6w5IXqvm1xzMU30yFtp7LITyzkm-9NmVAAx5oaTYvSfHgAjX0hPT6AdwWtT20Ke-_hnbOWmrUINLDXL1zAgfcxXTjM-L8OjpVKCkHlZPFhn2IFBen7mkqcItNU-lpXlU6MRLSv1jbB5IPYqwwlMQe_v95bzvPVE4d562QlAT-7VvuuYLiWipucvQ"/>
+</div>
+<h1 class="font-headline font-semibold text-lg tracking-tight text-sky-900 dark:text-sky-400">Appointments</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400">notifications</span>
+</button>
+</div>
+</header>
+<div class="bg-slate-100 dark:bg-slate-800 h-px w-full opacity-50"></div>
+<main class="flex-1 px-4 py-6 space-y-6 pb-32">
+<!-- Primary Action: New Appointment -->
+<button class="w-full py-4 px-6 rounded-2xl bg-gradient-to-br from-tertiary to-tertiary-container text-white flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'wght' 600;">add</span>
+<span class="font-headline font-bold text-base tracking-wide">New Appointment</span>
+</button>
+<!-- Tabs (Segmented Control) -->
+<div class="bg-surface-container p-1 rounded-2xl flex items-center gap-1">
+<button class="flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all bg-surface-container-lowest text-primary shadow-sm">
+                Today
+            </button>
+<button class="flex-1 py-2.5 px-4 rounded-xl text-sm font-medium text-on-surface-variant hover:bg-surface-variant transition-all">
+                Upcoming
+            </button>
+<button class="flex-1 py-2.5 px-4 rounded-xl text-sm font-medium text-on-surface-variant hover:bg-surface-variant transition-all">
+                Completed
+            </button>
+</div>
+<!-- Filters/Action Icons -->
+<div class="flex justify-end items-center gap-3">
+<button class="w-11 h-11 flex items-center justify-center rounded-xl bg-surface-container-lowest text-primary shadow-sm hover:shadow-md transition-shadow">
+<span class="material-symbols-outlined">person_add</span>
+</button>
+<button class="w-11 h-11 flex items-center justify-center rounded-xl bg-surface-container-lowest text-primary shadow-sm hover:shadow-md transition-shadow">
+<span class="material-symbols-outlined">lab_profile</span>
+</button>
+<button class="w-11 h-11 flex items-center justify-center rounded-xl bg-surface-container-lowest text-primary shadow-sm hover:shadow-md transition-shadow">
+<span class="material-symbols-outlined">description</span>
+</button>
+</div>
+<!-- Appointments List -->
+<div class="space-y-4">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest p-5 rounded-3xl flex flex-col gap-4 shadow-[0_12px_32px_-4px_rgba(25,28,29,0.04)] hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start">
+<div class="flex gap-4">
+<div class="w-12 h-12 rounded-2xl overflow-hidden bg-surface-container-high flex-shrink-0">
+<img alt="Patient" class="w-full h-full object-cover" data-alt="close up portrait of a middle-aged woman with kind eyes and short grey hair, soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDG4Yl1qZlD6YMbVrcrUIr_T1KfYtU0xacm4RN4lmvx-eUCT1s9eo02qEWabUEGYSp_7TslQEaIbiJ1jkrj1aZ21M2qqEF63O8Xy1g_mmIu20_-62_eWjOxrXUbOH-l12vuivKQsQb9stm1-hdnX-dykfAilPSBFOYohsYr5Alk21Iincf3cBAfLt1-3YzDi3Tb_U5epcowAaaZQ6xtDOceIsj9frFUxrQjyxcec8Kt4JVzHMzILN26bAG2R-t4z4RU0_pNKupyA"/>
+</div>
+<div class="flex flex-col">
+<h3 class="font-headline font-bold text-on-surface leading-tight">Elena Rodriguez</h3>
+<span class="text-xs font-medium text-on-surface-variant tracking-wider">ID: SC-89231</span>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded-full text-outline hover:bg-surface-container-low">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="px-3 py-1.5 rounded-full bg-secondary-container text-on-secondary-container text-[11px] font-bold uppercase tracking-widest">
+                        Post-op Review
+                    </div>
+<div class="flex items-center gap-1 px-2 py-1 rounded-lg bg-surface-container text-on-surface-variant text-[11px] font-medium">
+<span class="material-symbols-outlined text-[14px]">event_repeat</span>
+                        Scheduled
+                    </div>
+</div>
+<div class="bg-surface-container-low rounded-2xl p-3 flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">calendar_today</span>
+<span class="text-sm font-semibold text-on-surface">Oct 24, 09:30 AM</span>
+</div>
+<div class="px-3 py-1 rounded-full bg-orange-100 text-orange-700 text-[10px] font-bold uppercase tracking-wider">
+                        Upcoming
+                    </div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest p-5 rounded-3xl flex flex-col gap-4 shadow-[0_12px_32px_-4px_rgba(25,28,29,0.04)] opacity-90">
+<div class="flex justify-between items-start">
+<div class="flex gap-4">
+<div class="w-12 h-12 rounded-2xl overflow-hidden bg-surface-container-high flex-shrink-0">
+<img alt="Patient" class="w-full h-full object-cover" data-alt="portrait of an elderly man with glasses and a warm expression, soft indoor lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDDHuYX4MhcMB60hc8--qlv8hAMiQtSvjZJ7dNucP6FHNJqST58BWcbLrMtN_cv-Qov3oHNmyQ49RUvOAhAIY0Kahznib8qplmuGMOoiFICaMYWhPWxIsXMqG0Grl7kFEDCzndZWTFBhUI5oUjsksuZ49Z5Hc2MJAVZvjvmKx8UmA5XFuK_whuIL0HWvz9U-NAkcIPzA_BM9zEDIpjWeALbD5-jkqT5Sc8PM0FwGIIhKK2YrlPoP2Emm7fGy2hprSZwRiSYs5rtFw"/>
+</div>
+<div class="flex flex-col">
+<h3 class="font-headline font-bold text-on-surface leading-tight">Arthur Vance</h3>
+<span class="text-xs font-medium text-on-surface-variant tracking-wider">ID: SC-11402</span>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded-full text-outline hover:bg-surface-container-low">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="px-3 py-1.5 rounded-full bg-secondary-container text-on-secondary-container text-[11px] font-bold uppercase tracking-widest">
+                        Routine Physical
+                    </div>
+<div class="flex items-center gap-1 px-2 py-1 rounded-lg bg-surface-container text-on-surface-variant text-[11px] font-medium">
+<span class="material-symbols-outlined text-[14px]">directions_walk</span>
+                        Walk-in
+                    </div>
+</div>
+<div class="bg-surface-container-low rounded-2xl p-3 flex justify-between items-center border-l-4 border-primary">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">schedule</span>
+<span class="text-sm font-semibold text-on-surface">Oct 24, 10:15 AM</span>
+</div>
+<div class="px-3 py-1 rounded-full bg-sky-100 text-primary text-[10px] font-bold uppercase tracking-wider">
+                        In Progress
+                    </div>
+</div>
+</div>
+<!-- Card 3 (Completed Example) -->
+<div class="bg-surface-container p-5 rounded-3xl flex flex-col gap-4 grayscale-[0.5] opacity-80">
+<div class="flex justify-between items-start">
+<div class="flex gap-4">
+<div class="w-12 h-12 rounded-2xl overflow-hidden bg-surface-container-high flex-shrink-0">
+<img alt="Patient" class="w-full h-full object-cover" data-alt="professional woman portrait with natural lighting, neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPVVyBE79UN0dxPRMnwJHH0Pof7rhgtg34OYJRzAuyNEfVZx7m6EnXy2JTCswmR65dGqAZ7pChWFcNnHGJo-EbIcFJT7pMLD8-avZ8372hIEQBieJr_OzK7EQN6OHSQDMU1OMLFjFfqIeIEVpeMxbze5KPDT9WmXljyvJXhyQ-aPoIAe1Ic5vnAqU-ZmGsreFocUcyFVflULt6fYDBNOq0XzCP9N0BM7iKmaaDTwVH67g5I3PE-m2oDO7GkW9WmL2_tZgmdCZfFA"/>
+</div>
+<div class="flex flex-col">
+<h3 class="font-headline font-bold text-on-surface-variant leading-tight line-through">Sarah Chen</h3>
+<span class="text-xs font-medium text-on-surface-variant tracking-wider">ID: SC-22981</span>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded-full text-outline">
+<span class="material-symbols-outlined">check_circle</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-3 opacity-60">
+<div class="px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-bold uppercase tracking-widest">
+                        Blood Lab Review
+                    </div>
+</div>
+<div class="bg-surface-container-lowest/50 rounded-2xl p-3 flex justify-between items-center">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">done_all</span>
+<span class="text-sm font-medium">Oct 24, 08:00 AM</span>
+</div>
+<div class="px-3 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-bold uppercase tracking-wider">
+                        Completed
+                    </div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.04)]">
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-5 py-2 hover:text-sky-700 dark:hover:text-sky-200 transition-transform duration-200 active:scale-90" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-inter text-[11px] font-medium tracking-wide uppercase mt-1">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-5 py-2 hover:text-sky-700 dark:hover:text-sky-200 transition-transform duration-200 active:scale-90" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-inter text-[11px] font-medium tracking-wide uppercase mt-1">Patients</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-sky-100/50 dark:bg-sky-900/30 text-sky-900 dark:text-sky-100 rounded-2xl px-5 py-2 transition-transform duration-200 active:scale-90" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="font-inter text-[11px] font-medium tracking-wide uppercase mt-1">Appointments</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 px-5 py-2 hover:text-sky-700 dark:hover:text-sky-200 transition-transform duration-200 active:scale-90" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-inter text-[11px] font-medium tracking-wide uppercase mt-1">Templates</span>
+</a>
+</nav>
+</body></html>

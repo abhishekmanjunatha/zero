@@ -15,13 +15,7 @@ export default async function NewClinicalNotePage(props: {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Create Clinical Document</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Build a structured clinical document with AI assistance.
-        </p>
-      </div>
+    <div className="app-page">
       <DocumentComposer />
     </div>
   )

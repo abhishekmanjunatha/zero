@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { safeExtractJson, sanitizePromptValue } from '@/lib/ai/parse'
+import { isRateLimited } from '@/lib/rate-limit'
 
 // ── Safe fallback for any failure path ─────────────────────────────────────
 const SAFE_FALLBACK = {
@@ -98,6 +99,14 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser()
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized', _meta: { isFallback: true, reason: 'unauthorized' } }, { status: 401 })
+  }
+
+  // Rate limiting: 10 requests per minute per user
+  if (isRateLimited(`ai-lab-report:${user.id}`, 10, 60_000)) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait a moment before trying again.', _meta: { isFallback: true, reason: 'rate_limited' } },
+      { status: 429 }
+    )
   }
 
   if (!OPENROUTER_API_KEY) {

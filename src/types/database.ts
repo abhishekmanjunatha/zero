@@ -408,6 +408,102 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          id: string
+          dietitian_id: string
+          patient_id: string | null
+          type:
+            | 'appointment_created'
+            | 'appointment_checked_in'
+            | 'appointment_in_progress'
+            | 'appointment_completed'
+            | 'appointment_cancelled'
+            | 'appointment_no_show'
+            | 'lab_report_uploaded'
+            | 'clinical_document_created'
+            | 'clinical_document_updated'
+            | 'patient_created'
+            | 'patient_updated'
+            | 'template_created'
+            | 'template_updated'
+            | 'template_deleted'
+            | 'profile_updated'
+            | 'professional_profile_updated'
+            | 'practice_updated'
+            | 'availability_updated'
+          title: string
+          message: string
+          action_url: string | null
+          metadata: Json
+          read_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          dietitian_id: string
+          patient_id?: string | null
+          type:
+            | 'appointment_created'
+            | 'appointment_checked_in'
+            | 'appointment_in_progress'
+            | 'appointment_completed'
+            | 'appointment_cancelled'
+            | 'appointment_no_show'
+            | 'lab_report_uploaded'
+            | 'clinical_document_created'
+            | 'clinical_document_updated'
+            | 'patient_created'
+            | 'patient_updated'
+            | 'template_created'
+            | 'template_updated'
+            | 'template_deleted'
+            | 'profile_updated'
+            | 'professional_profile_updated'
+            | 'practice_updated'
+            | 'availability_updated'
+          title: string
+          message: string
+          action_url?: string | null
+          metadata?: Json
+          read_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          dietitian_id?: string
+          patient_id?: string | null
+          type?:
+            | 'appointment_created'
+            | 'appointment_checked_in'
+            | 'appointment_in_progress'
+            | 'appointment_completed'
+            | 'appointment_cancelled'
+            | 'appointment_no_show'
+            | 'lab_report_uploaded'
+            | 'clinical_document_created'
+            | 'clinical_document_updated'
+            | 'patient_created'
+            | 'patient_updated'
+            | 'template_created'
+            | 'template_updated'
+            | 'template_deleted'
+            | 'profile_updated'
+            | 'professional_profile_updated'
+            | 'practice_updated'
+            | 'availability_updated'
+          title?: string
+          message?: string
+          action_url?: string | null
+          metadata?: Json
+          read_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       timeline_events: {
         Row: {
           id: string
@@ -499,6 +595,7 @@ export type Appointment = Tables<'appointments'>
 export type ClinicalNote = Tables<'clinical_notes'>
 export type DocumentTemplate = Tables<'document_templates'>
 export type LabReport = Tables<'lab_reports'>
+export type Notification = Tables<'notifications'>
 export type TimelineEvent = Tables<'timeline_events'>
 export type Document = Tables<'documents'>
 

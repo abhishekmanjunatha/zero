@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { Json, Tables } from '@/types/database'
 import type { DocumentBlock } from '@/types/app'
+import { emitNotification } from '@/lib/notifications/server'
 
 const TEMPLATES_TABLE_MISSING_HINT =
   'Templates setup is incomplete. Please apply migration supabase/migrations/00002_document_templates.sql.'
@@ -142,6 +143,17 @@ export async function createDocumentTemplate(
       return { error: updateError.message }
     }
 
+    await emitNotification(supabase, {
+      dietitianId: user.id,
+      type: 'template_updated',
+      title: 'Template updated',
+      message: name,
+      actionUrl: `/templates/${existing.id}`,
+      metadata: {
+        template_id: existing.id,
+      } as Json,
+    })
+
     revalidatePath('/templates')
     return { templateId: existing.id }
   }
@@ -163,8 +175,21 @@ export async function createDocumentTemplate(
     return { error: error?.message ?? 'Failed to create template' }
   }
 
+  const templateId = (data as { id: string }).id
+
+  await emitNotification(supabase, {
+    dietitianId: user.id,
+    type: 'template_created',
+    title: 'Template created',
+    message: name,
+    actionUrl: `/templates/${templateId}`,
+    metadata: {
+      template_id: templateId,
+    } as Json,
+  })
+
   revalidatePath('/templates')
-  return { templateId: (data as { id: string }).id }
+  return { templateId }
 }
 
 export async function updateDocumentTemplate(
@@ -200,6 +225,17 @@ export async function updateDocumentTemplate(
     return { error: error.message }
   }
 
+  await emitNotification(supabase, {
+    dietitianId: user.id,
+    type: 'template_updated',
+    title: 'Template updated',
+    message: name,
+    actionUrl: `/templates/${templateId}`,
+    metadata: {
+      template_id: templateId,
+    } as Json,
+  })
+
   revalidatePath('/templates')
   revalidatePath(`/templates/${templateId}`)
   return {}
@@ -215,6 +251,13 @@ export async function deleteDocumentTemplate(
 
   if (!user) return { error: 'Not authenticated' }
 
+  const { data: template } = await supabase
+    .from('document_templates')
+    .select('name')
+    .eq('id', templateId)
+    .eq('dietitian_id', user.id)
+    .maybeSingle()
+
   const { error } = await supabase
     .from('document_templates')
     .delete()
@@ -227,6 +270,17 @@ export async function deleteDocumentTemplate(
     }
     return { error: error.message }
   }
+
+  await emitNotification(supabase, {
+    dietitianId: user.id,
+    type: 'template_deleted',
+    title: 'Template deleted',
+    message: (template as { name?: string } | null)?.name || 'A template was removed',
+    actionUrl: '/templates',
+    metadata: {
+      template_id: templateId,
+    } as Json,
+  })
 
   revalidatePath('/templates')
   return {}

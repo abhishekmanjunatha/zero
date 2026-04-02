@@ -16,13 +16,7 @@ export default async function UploadPatientLabReportPage(props: {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Upload Lab Report</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Upload a lab report for {patient.full_name} and optionally run AI analysis.
-        </p>
-      </div>
+    <div className="app-page">
       <UploadReportForm initialPatientId={id} lockPatient />
     </div>
   )

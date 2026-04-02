@@ -6,6 +6,7 @@ import type { Tables, Json } from '@/types/database'
 import type { CreateAppointmentInput } from '@/lib/validations/appointment'
 import type { DayAvailability, SlotDuration, BufferTime } from '@/types/app'
 import { generateSlots } from '@/lib/utils/slots'
+import { emitNotification } from '@/lib/notifications/server'
 import {
   getCurrentDateInTimeZone,
   getCurrentTimeInTimeZone,
@@ -38,6 +39,15 @@ export interface AppointmentWithPatient {
 }
 
 type AppointmentStatus = Tables<'appointments'>['status']
+export type AppointmentsModeFilter = 'all' | Tables<'appointments'>['mode']
+
+interface GetAppointmentsOptions {
+  filter?: 'today' | 'upcoming' | 'completed'
+  search?: string
+  dateFrom?: string
+  dateTo?: string
+  mode?: AppointmentsModeFilter
+}
 
 const STATUS_EVENT_MAP: Partial<Record<AppointmentStatus, Tables<'timeline_events'>['event_type']>> = {
   checked_in: 'appointment_checked_in',
@@ -91,13 +101,20 @@ async function ensurePatientOwnedByDietitian(
 // ── Get filtered appointments ──────────────────────────────────────────────
 
 export async function getAppointments(
-  filter: 'today' | 'upcoming' | 'completed' = 'today'
+  options: 'today' | 'upcoming' | 'completed' | GetAppointmentsOptions = 'today'
 ): Promise<{ data: AppointmentWithPatient[]; error?: string }> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { data: [] }
+
+  const filter =
+    typeof options === 'string' ? options : (options.filter ?? 'today')
+  const search = typeof options === 'string' ? '' : (options.search ?? '').trim().toLowerCase()
+  const dateFrom = typeof options === 'string' ? '' : (options.dateFrom ?? '')
+  const dateTo = typeof options === 'string' ? '' : (options.dateTo ?? '')
+  const mode = typeof options === 'string' ? 'all' : (options.mode ?? 'all')
 
   const today = getCurrentDateInTimeZone()
 
@@ -119,6 +136,18 @@ export async function getAppointments(
     query = query.in('status', ['completed', 'cancelled', 'no_show'])
   }
 
+  if (mode !== 'all') {
+    query = query.eq('mode', mode)
+  }
+
+  if (dateFrom) {
+    query = query.gte('appointment_date', dateFrom)
+  }
+
+  if (dateTo) {
+    query = query.lte('appointment_date', dateTo)
+  }
+
   const { data, error } = await query.order('appointment_date', { ascending: filter !== 'completed' })
     .order('appointment_time', { ascending: true })
 
@@ -127,7 +156,7 @@ export async function getAppointments(
     return { data: [], error: 'Failed to load appointments. Please try again.' }
   }
 
-  const rows = (data as unknown as Array<
+  let rows = (data as unknown as Array<
     Omit<AppointmentWithPatient, 'patient'> & {
       patients: AppointmentWithPatient['patient']
     }
@@ -135,6 +164,26 @@ export async function getAppointments(
     ...row,
     patient: row.patients,
   }))
+
+  if (search) {
+    rows = rows.filter((row) => {
+      const purposeLabel =
+        row.purpose === 'custom' && row.custom_purpose
+          ? row.custom_purpose
+          : row.purpose.replaceAll('_', ' ')
+
+      const haystack = [
+        row.patient.full_name,
+        row.patient.patient_code,
+        row.patient.phone,
+        purposeLabel,
+      ]
+        .join(' ')
+        .toLowerCase()
+
+      return haystack.includes(search)
+    })
+  }
 
   return { data: rows }
 }
@@ -301,6 +350,21 @@ export async function createAppointment(
     })
   }
 
+  await emitNotification(supabase, {
+    dietitianId: user.id,
+    patientId: input.patient_id,
+    type: 'appointment_created',
+    title: 'Appointment created',
+    message: `${input.appointment_date} at ${input.appointment_time} (${input.mode === 'walk_in' ? 'Walk-in' : 'Scheduled'})`,
+    actionUrl: `/patients/${input.patient_id}?tab=appointments`,
+    metadata: {
+      appointment_id: newId,
+      purpose: input.purpose,
+      status: initialStatus,
+      mode: input.mode,
+    } as Json,
+  })
+
   revalidatePath('/appointments')
   revalidatePath('/dashboard')
   revalidatePath(`/patients/${input.patient_id}`)
@@ -371,6 +435,44 @@ export async function updateAppointmentStatus(
       reference_id: id,
     })
   }
+
+  const statusNotification: Record<typeof status, { type: Tables<'notifications'>['type']; title: string }> = {
+    checked_in: {
+      type: 'appointment_checked_in',
+      title: 'Patient checked in',
+    },
+    in_progress: {
+      type: 'appointment_in_progress',
+      title: 'Consultation started',
+    },
+    completed: {
+      type: 'appointment_completed',
+      title: 'Appointment completed',
+    },
+    cancelled: {
+      type: 'appointment_cancelled',
+      title: 'Appointment cancelled',
+    },
+    no_show: {
+      type: 'appointment_no_show',
+      title: 'Patient marked no-show',
+    },
+  }
+
+  await emitNotification(supabase, {
+    dietitianId: user.id,
+    patientId: appointment.patient_id,
+    type: statusNotification[status].type,
+    title: statusNotification[status].title,
+    message: `${appointment.appointment_date} at ${appointment.appointment_time}`,
+    actionUrl: `/patients/${appointment.patient_id}?tab=appointments`,
+    metadata: {
+      appointment_id: id,
+      previous_status: appointment.status,
+      next_status: status,
+      mode: appointment.mode,
+    } as Json,
+  })
 
   if (status === 'completed') {
     // Update patient last_visit_at to the appointment date

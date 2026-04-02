@@ -5,6 +5,16 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { Tables } from '@/types/database'
 import type { CreatePatientInput, UpdatePatientInput } from '@/lib/validations/patient'
+import { emitNotification } from '@/lib/notifications/server'
+
+export type PatientsFilterMode = 'all' | 'appointments' | 'labs' | 'notes'
+
+interface GetPatientsOptions {
+  search?: string
+  mode?: PatientsFilterMode
+  dateFrom?: string
+  dateTo?: string
+}
 
 // ── Patient code generator ──────────────────────────────────────────────────
 function generatePatientCode(): string {
@@ -14,23 +24,110 @@ function generatePatientCode(): string {
 }
 
 // ── Get all patients for the logged-in dietitian ────────────────────────────
-export async function getPatients(search?: string): Promise<{ data: Tables<'patients'>[]; error?: string }> {
+export async function getPatients(
+  options?: string | GetPatientsOptions
+): Promise<{ data: Tables<'patients'>[]; error?: string }> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { data: [] }
 
+  const search = typeof options === 'string' ? options : options?.search
+  const mode: PatientsFilterMode =
+    typeof options === 'string' ? 'all' : options?.mode ?? 'all'
+  const dateFrom = typeof options === 'string' ? undefined : options?.dateFrom
+  const dateTo = typeof options === 'string' ? undefined : options?.dateTo
+
   let query = supabase
     .from('patients')
     .select('*')
     .eq('dietitian_id', user.id)
+
+  if (mode !== 'all') {
+    if (mode === 'appointments') {
+      const { data: relations, error: relationError } = await supabase
+        .from('appointments')
+        .select('patient_id')
+        .eq('dietitian_id', user.id)
+
+      if (relationError) {
+        console.error('[Patients] getPatients appointments filter error:', relationError.message)
+        return { data: [], error: 'Failed to filter patients. Please try again.' }
+      }
+
+      const patientIds = Array.from(
+        new Set(
+          ((relations as Array<{ patient_id: string | null }> | null) ?? [])
+            .map((row) => row.patient_id)
+            .filter((id): id is string => Boolean(id))
+        )
+      )
+
+      if (patientIds.length === 0) return { data: [] }
+      query = query.in('id', patientIds)
+    }
+
+    if (mode === 'labs') {
+      const { data: relations, error: relationError } = await supabase
+        .from('lab_reports')
+        .select('patient_id')
+        .eq('dietitian_id', user.id)
+
+      if (relationError) {
+        console.error('[Patients] getPatients labs filter error:', relationError.message)
+        return { data: [], error: 'Failed to filter patients. Please try again.' }
+      }
+
+      const patientIds = Array.from(
+        new Set(
+          ((relations as Array<{ patient_id: string | null }> | null) ?? [])
+            .map((row) => row.patient_id)
+            .filter((id): id is string => Boolean(id))
+        )
+      )
+
+      if (patientIds.length === 0) return { data: [] }
+      query = query.in('id', patientIds)
+    }
+
+    if (mode === 'notes') {
+      const { data: relations, error: relationError } = await supabase
+        .from('clinical_notes')
+        .select('patient_id')
+        .eq('dietitian_id', user.id)
+
+      if (relationError) {
+        console.error('[Patients] getPatients notes filter error:', relationError.message)
+        return { data: [], error: 'Failed to filter patients. Please try again.' }
+      }
+
+      const patientIds = Array.from(
+        new Set(
+          ((relations as Array<{ patient_id: string | null }> | null) ?? [])
+            .map((row) => row.patient_id)
+            .filter((id): id is string => Boolean(id))
+        )
+      )
+
+      if (patientIds.length === 0) return { data: [] }
+      query = query.in('id', patientIds)
+    }
+  }
 
   if (search?.trim()) {
     const term = search.trim()
     query = query.or(
       `full_name.ilike.%${term}%,patient_code.ilike.%${term}%,phone.ilike.%${term}%`
     )
+  }
+
+  if (dateFrom) {
+    query = query.gte('last_visit_at', `${dateFrom}T00:00:00.000Z`)
+  }
+
+  if (dateTo) {
+    query = query.lte('last_visit_at', `${dateTo}T23:59:59.999Z`)
   }
 
   const { data, error } = await query.order('last_visit_at', {
@@ -129,6 +226,18 @@ export async function createPatient(
     event_data: { note: 'Patient record created' },
   })
 
+  await emitNotification(supabase, {
+    dietitianId: user.id,
+    patientId: newId,
+    type: 'patient_created',
+    title: 'Patient added',
+    message: input.full_name,
+    actionUrl: `/patients/${newId}`,
+    metadata: {
+      patient_code,
+    },
+  })
+
   revalidatePath('/patients')
   return { patientId: newId }
 }
@@ -154,6 +263,18 @@ export async function updatePatient(
     .eq('dietitian_id', user.id)
 
   if (error) return { error: error.message }
+
+  await emitNotification(supabase, {
+    dietitianId: user.id,
+    patientId: id,
+    type: 'patient_updated',
+    title: 'Patient profile updated',
+    message: input.full_name?.trim() || 'Patient details were updated',
+    actionUrl: `/patients/${id}`,
+    metadata: {
+      updated_fields: Object.keys(input),
+    },
+  })
 
   revalidatePath('/patients')
   revalidatePath(`/patients/${id}`)

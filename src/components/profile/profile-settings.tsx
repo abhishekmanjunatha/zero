@@ -2,11 +2,11 @@
 
 import { useState, useTransition, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   User, Briefcase, Building2, Calendar, Settings, Loader2, Upload,
-  Plus, Trash2, Eye, Wifi, LayoutGrid,
+  Plus, Trash2, Eye, Wifi, LayoutGrid, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -26,7 +26,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { ResponsiveDatePicker } from '@/components/ui/responsive-date-picker'
+import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { StepProgress, type StepConfig } from '@/components/shared/step-wizard'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import { cn } from '@/lib/utils'
 import {
   basicProfileSchema, professionalSchema, practiceSchema, availabilitySchema,
@@ -89,16 +93,60 @@ const passwordSchema = z.object({
   path: ['confirm_password'],
 })
 
+// ── Mobile step config ──────────────────────────────────────────────────────
+
+const PROFILE_STEPS: StepConfig[] = [
+  { label: 'Basic' },
+  { label: 'Professional' },
+  { label: 'Practice' },
+  { label: 'Availability' },
+  { label: 'Account' },
+]
+
 // ── Main Component ──────────────────────────────────────────────────────────
 
 export function ProfileSettings({
   dietitian, professional, practice, availability, email,
 }: ProfileSettingsProps) {
   const router = useRouter()
+  const isMobile = useIsMobile()
+  const [mobileStep, setMobileStep] = useState(0)
+  const onSaved = () => router.refresh()
+
+  const tabContent = [
+    <BasicInfoTab key="basic" dietitian={dietitian} email={email} onSaved={onSaved} />,
+    <ProfessionalTab key="professional" professional={professional} onSaved={onSaved} />,
+    <PracticeTab key="practice" dietitianId={dietitian.id} practice={practice} onSaved={onSaved} />,
+    <AvailabilityTab key="availability" availability={availability} onSaved={onSaved} />,
+    <AccountTab key="account" email={email} />,
+  ]
+
+  if (isMobile) {
+    return (
+      <div className="space-y-5 pb-28">
+        <StepProgress steps={PROFILE_STEPS} currentStep={mobileStep} />
+        {tabContent[mobileStep]}
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-outline-variant/30 bg-card px-5 py-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+          <div className="flex gap-3">
+            <Button type="button" variant="outline" onClick={() => setMobileStep((s) => Math.max(0, s - 1))}
+              disabled={mobileStep === 0}
+              className={cn('flex-1 h-12 rounded-xl border-primary/30 text-primary font-semibold gap-2', mobileStep === 0 && 'invisible')}>
+              <ChevronLeft className="h-4 w-4" /> Back
+            </Button>
+            <Button type="button" onClick={() => setMobileStep((s) => Math.min(PROFILE_STEPS.length - 1, s + 1))}
+              disabled={mobileStep === PROFILE_STEPS.length - 1}
+              className={cn('flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold gap-2', mobileStep === PROFILE_STEPS.length - 1 && 'invisible')}>
+              Next <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <Tabs defaultValue="basic" className="space-y-6">
-      <TabsList className="w-full grid grid-cols-5">
+      <TabsList className="w-full grid grid-cols-5 rounded-2xl border border-border/40 bg-card/95 p-1">
         <TabsTrigger value="basic" className="gap-1.5 text-xs sm:text-sm">
           <User className="h-3.5 w-3.5 hidden sm:block" /> Basic
         </TabsTrigger>
@@ -117,16 +165,16 @@ export function ProfileSettings({
       </TabsList>
 
       <TabsContent value="basic">
-        <BasicInfoTab dietitian={dietitian} email={email} onSaved={() => router.refresh()} />
+        <BasicInfoTab dietitian={dietitian} email={email} onSaved={onSaved} />
       </TabsContent>
       <TabsContent value="professional">
-        <ProfessionalTab professional={professional} onSaved={() => router.refresh()} />
+        <ProfessionalTab professional={professional} onSaved={onSaved} />
       </TabsContent>
       <TabsContent value="practice">
-        <PracticeTab dietitianId={dietitian.id} practice={practice} onSaved={() => router.refresh()} />
+        <PracticeTab dietitianId={dietitian.id} practice={practice} onSaved={onSaved} />
       </TabsContent>
       <TabsContent value="availability">
-        <AvailabilityTab availability={availability} onSaved={() => router.refresh()} />
+        <AvailabilityTab availability={availability} onSaved={onSaved} />
       </TabsContent>
       <TabsContent value="account">
         <AccountTab email={email} />
@@ -147,7 +195,7 @@ function BasicInfoTab({ dietitian, email, onSaved }: {
   const [bioLength, setBioLength] = useState(dietitian.short_bio?.length ?? 0)
 
   const {
-    register, handleSubmit, setValue, setError, getValues, formState: { errors },
+    register, handleSubmit, control, setValue, setError, getValues, formState: { errors },
   } = useForm<BasicProfileInput>({
     resolver: zodResolver(basicProfileSchema),
     defaultValues: {
@@ -194,7 +242,7 @@ function BasicInfoTab({ dietitian, email, onSaved }: {
   const initials = (dietitian.full_name ?? 'D').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="clay-card p-6 space-y-5">
+    <form onSubmit={handleSubmit(onSubmit)} className="app-surface p-6 space-y-5">
       <h2 className="text-lg font-semibold">Basic Information</h2>
       {errors.root && (
         <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errors.root.message}</div>
@@ -258,22 +306,43 @@ function BasicInfoTab({ dietitian, email, onSaved }: {
       {/* DOB */}
       <div className="space-y-1.5">
         <Label htmlFor="p-dob">Date of Birth <span className="text-destructive">*</span></Label>
-        <Input id="p-dob" type="date" {...register('date_of_birth')} />
+        <Controller
+          control={control}
+          name="date_of_birth"
+          render={({ field }) => (
+            <ResponsiveDatePicker
+              value={field.value}
+              onChange={field.onChange}
+              max={new Date().toISOString().slice(0, 10)}
+              placeholder="Select date of birth"
+              sheetTitle="Select date of birth"
+            />
+          )}
+        />
         {errors.date_of_birth && <p className="text-xs text-destructive">{errors.date_of_birth.message}</p>}
       </div>
 
       {/* Gender */}
       <div className="space-y-1.5">
         <Label>Gender <span className="text-destructive">*</span></Label>
-        <Select defaultValue={dietitian.gender ?? undefined} onValueChange={(v) => setValue('gender', v as BasicProfileInput['gender'])}>
-          <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="male">Male</SelectItem>
-            <SelectItem value="female">Female</SelectItem>
-            <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
-            <SelectItem value="other">Other</SelectItem>
-          </SelectContent>
-        </Select>
+        <Controller
+          control={control}
+          name="gender"
+          render={({ field }) => (
+            <ResponsiveSelect
+              value={field.value}
+              onValueChange={(v) => field.onChange(v as BasicProfileInput['gender'])}
+              placeholder="Select gender"
+              sheetTitle="Select gender"
+              options={[
+                { value: 'male', label: 'Male' },
+                { value: 'female', label: 'Female' },
+                { value: 'prefer_not_to_say', label: 'Prefer not to say' },
+                { value: 'other', label: 'Other' },
+              ]}
+            />
+          )}
+        />
         {errors.gender && <p className="text-xs text-destructive">{errors.gender.message}</p>}
       </div>
 
@@ -364,7 +433,7 @@ function ProfessionalTab({ professional, onSaved }: {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="clay-card p-6 space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="app-surface p-6 space-y-6">
       <h2 className="text-lg font-semibold">Professional Details</h2>
       {errors.root && (
         <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errors.root.message}</div>
@@ -573,7 +642,7 @@ function PracticeTab({ dietitianId, practice, onSaved }: {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="clay-card p-6 space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="app-surface p-6 space-y-6">
       <h2 className="text-lg font-semibold">Clinic / Practice Details</h2>
       {errors.root && (
         <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{errors.root.message}</div>
@@ -826,7 +895,7 @@ function AvailabilityTab({ availability, onSaved }: {
   }
 
   return (
-    <div className="clay-card overflow-hidden">
+    <div className="app-surface overflow-hidden">
       <div className="px-6 py-5 border-b">
         <h2 className="text-lg font-semibold">Weekly Availability</h2>
         <p className="text-sm text-muted-foreground mt-1">Changes affect appointment slot generation</p>
@@ -950,7 +1019,7 @@ function AccountTab({ email }: { email: string }) {
   return (
     <div className="space-y-6">
       {/* Change Password */}
-      <form onSubmit={handleSubmit(onSubmit)} className="clay-card p-6 space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} className="app-surface p-6 space-y-5">
         <h2 className="text-lg font-semibold">Change Password</h2>
 
         <div className="space-y-1.5">
@@ -971,7 +1040,7 @@ function AccountTab({ email }: { email: string }) {
       </form>
 
       {/* Account Info */}
-      <div className="clay-card p-6 space-y-4">
+      <div className="app-surface p-6 space-y-4">
         <h2 className="text-lg font-semibold">Account Information</h2>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">

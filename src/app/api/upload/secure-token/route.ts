@@ -185,5 +185,18 @@ export async function POST(request: NextRequest) {
     reference_id: row.id,
   })
 
+  await supabase.from('notifications').insert({
+    dietitian_id: row.dietitian_id,
+    patient_id: row.patient_id,
+    type: 'lab_report_uploaded',
+    title: 'Lab report uploaded',
+    message: body.title || 'Patient Upload',
+    action_url: `/patients/${row.patient_id}?tab=labs`,
+    metadata: {
+      source: 'patient',
+      report_id: row.id,
+    },
+  })
+
   return NextResponse.json({ success: true })
 }

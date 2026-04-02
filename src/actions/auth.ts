@@ -1,13 +1,25 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-export async function signIn(email: string, password: string) {
+export async function signIn(email: string, password: string, rememberDevice = false) {
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) return { error: error.message }
+
+  // Persist explicit user preference so security/session policy can consume it.
+  const cookieStore = await cookies()
+  cookieStore.set('strive_remember_device', rememberDevice ? '1' : '0', {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: rememberDevice ? 60 * 60 * 24 * 30 : 60 * 60 * 8,
+  })
+
   revalidatePath('/', 'layout')
   return { success: true }
 }

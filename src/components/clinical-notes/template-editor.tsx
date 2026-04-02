@@ -106,8 +106,8 @@ export function TemplateEditor({
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <Card>
+    <div className="w-full max-w-4xl space-y-6">
+      <Card className="rounded-2xl border border-border/40 bg-card/95 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Template Details</CardTitle>
         </CardHeader>
@@ -122,17 +122,17 @@ export function TemplateEditor({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-2xl border border-border/40 bg-card/95 shadow-sm">
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <CardTitle className="text-base">Template Blocks</CardTitle>
-          <Button type="button" size="sm" variant="outline" onClick={addBlock} className="gap-1.5">
+          <Button type="button" size="sm" variant="outline" onClick={addBlock} className="h-9 gap-1.5 rounded-xl">
             <Plus className="h-3.5 w-3.5" />
             Add Block
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">
           {blocks.map((block, idx) => (
-            <div key={block.id} className="rounded-lg border p-4 space-y-2">
+            <div key={block.id} className="space-y-2 rounded-xl border border-border/40 bg-background/75 p-4">
               <div className="flex items-center gap-2">
                 <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
                 <Input
@@ -187,12 +187,12 @@ export function TemplateEditor({
           type="button"
           disabled={isPending || !canSave}
           onClick={handleSave}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 rounded-full px-5"
+          className="h-10 gap-2 rounded-xl bg-primary px-5 text-primary-foreground hover:bg-primary/90"
         >
           {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           Save Template
         </Button>
-        <Button type="button" variant="outline" disabled={isPending} onClick={() => router.push('/templates')}>
+        <Button type="button" variant="outline" disabled={isPending} onClick={() => router.push('/templates')} className="h-10 rounded-xl">
           Cancel
         </Button>
       </div>

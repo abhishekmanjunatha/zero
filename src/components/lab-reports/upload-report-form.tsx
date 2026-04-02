@@ -7,7 +7,6 @@ import {
   X,
   FileText,
   Loader2,
-  Search,
   User,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -22,8 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ContactPickerButton } from '@/components/shared/contact-picker-button'
-import { useDebounce } from '@/hooks/use-debounce'
+import { PatientLookup } from '@/components/shared/patient-lookup'
 import { createClient } from '@/lib/supabase/client'
 import { compressForLabUpload } from '@/lib/utils/file-compression'
 import { uploadLabReport } from '@/actions/lab-reports'
@@ -32,7 +30,7 @@ interface PatientResult {
   id: string
   full_name: string
   patient_code: string
-  phone: string
+  phone: string | null
 }
 
 function createUploadNonce() {
@@ -63,10 +61,6 @@ export function UploadReportForm({ initialPatientId, lockPatient = false }: Uplo
 
   // Patient search
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<PatientResult[]>([])
-  const [searchLoading, setSearchLoading] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(false)
-  const debouncedSearch = useDebounce(searchQuery, 300)
   const [selectedPatient, setSelectedPatient] = useState<PatientResult | null>(null)
 
   // Form fields
@@ -90,38 +84,9 @@ export function UploadReportForm({ initialPatientId, lockPatient = false }: Uplo
     fetchPatient()
   }, [preselectedPatientId])
 
-  // Patient search
-  useEffect(() => {
-    if (!debouncedSearch.trim()) {
-      setSearchResults([])
-      setSearchOpen(false)
-      return
-    }
-    const search = async () => {
-      setSearchLoading(true)
-      try {
-        const supabase = createClient()
-        const term = debouncedSearch.trim()
-        const { data } = await supabase
-          .from('patients')
-          .select('id, full_name, patient_code, phone')
-          .or(`full_name.ilike.%${term}%,patient_code.ilike.%${term}%,phone.ilike.%${term}%`)
-          .limit(8)
-        setSearchResults((data as PatientResult[]) ?? [])
-        setSearchOpen(true)
-      } catch {
-        setSearchResults([])
-      } finally {
-        setSearchLoading(false)
-      }
-    }
-    search()
-  }, [debouncedSearch])
-
   const handleSelectPatient = (patient: PatientResult) => {
     setSelectedPatient(patient)
     setSearchQuery('')
-    setSearchOpen(false)
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -234,71 +199,14 @@ export function UploadReportForm({ initialPatientId, lockPatient = false }: Uplo
             <CardTitle className="text-base">Select Patient</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="relative">
-              <div className="relative flex items-center">
-                <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search by name, phone, or patient ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onFocus={() => {
-                    if (searchResults.length > 0) setSearchOpen(true)
-                  }}
-                  className="h-10 w-full rounded-lg border bg-background pl-9 pr-16 text-sm outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-muted-foreground"
-                  autoComplete="off"
-                />
-                <ContactPickerButton
-                  className="absolute right-10 h-7 w-7 p-0"
-                  ariaLabel="Pick contact to search patient"
-                  onContactPicked={({ phone }) => {
-                    setSearchQuery(phone)
-                    setSearchOpen(false)
-                  }}
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery('')
-                      setSearchOpen(false)
-                    }}
-                    className="absolute right-3 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              {searchOpen && (
-                <div className="absolute top-full z-50 mt-1 w-full rounded-lg border bg-popover shadow-md">
-                  {searchLoading && (
-                    <div className="px-4 py-3 text-sm text-muted-foreground">Searching…</div>
-                  )}
-                  {!searchLoading && searchResults.length === 0 && searchQuery.trim() && (
-                    <div className="px-4 py-3 text-sm text-muted-foreground">No patients found</div>
-                  )}
-                  {!searchLoading &&
-                    searchResults.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-accent transition-colors"
-                        onClick={() => handleSelectPatient(p)}
-                      >
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{p.full_name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {p.patient_code} · {p.phone}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                </div>
-              )}
-            </div>
+            <PatientLookup
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+              onSelect={handleSelectPatient}
+              placeholder="Search by name, phone, or patient ID..."
+              inputClassName="h-10 rounded-lg focus:border-emerald-500 focus:ring-emerald-500"
+              emptyMessage={searchQuery.trim() ? `No patients found for "${searchQuery}"` : 'No patients found'}
+            />
           </CardContent>
         </Card>
       ) : (

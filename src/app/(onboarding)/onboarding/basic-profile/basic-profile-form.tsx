@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { Loader2, Upload } from 'lucide-react'
@@ -10,13 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { ResponsiveDatePicker } from '@/components/ui/responsive-date-picker'
+import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ContactPickerButton } from '@/components/shared/contact-picker-button'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
@@ -40,6 +35,7 @@ export function BasicProfileForm({ defaultValues, userId }: BasicProfileFormProp
   const {
     register,
     handleSubmit,
+    control,
     setValue,
     setError,
     getValues,
@@ -200,27 +196,43 @@ export function BasicProfileForm({ defaultValues, userId }: BasicProfileFormProp
         {/* Date of Birth */}
         <div className="space-y-1.5">
           <Label htmlFor="dob">Date of Birth <span className="text-destructive">*</span></Label>
-          <Input id="dob" type="date" {...register('date_of_birth')} />
+          <Controller
+            control={control}
+            name="date_of_birth"
+            render={({ field }) => (
+              <ResponsiveDatePicker
+                value={field.value}
+                onChange={field.onChange}
+                max={new Date().toISOString().slice(0, 10)}
+                placeholder="Select your date of birth"
+                sheetTitle="Select date of birth"
+              />
+            )}
+          />
           {errors.date_of_birth && <p className="text-xs text-destructive">{errors.date_of_birth.message}</p>}
         </div>
 
         {/* Gender */}
         <div className="space-y-1.5">
           <Label>Gender <span className="text-destructive">*</span></Label>
-          <Select
-            defaultValue={defaultValues?.gender}
-            onValueChange={(v) => setValue('gender', v as BasicProfileInput['gender'])}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select gender" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="male">Male</SelectItem>
-              <SelectItem value="female">Female</SelectItem>
-              <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
+          <Controller
+            control={control}
+            name="gender"
+            render={({ field }) => (
+              <ResponsiveSelect
+                value={field.value}
+                onValueChange={(v) => field.onChange(v as BasicProfileInput['gender'])}
+                placeholder="Select gender"
+                sheetTitle="Select gender"
+                options={[
+                  { value: 'male', label: 'Male' },
+                  { value: 'female', label: 'Female' },
+                  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
+                  { value: 'other', label: 'Other' },
+                ]}
+              />
+            )}
+          />
           {errors.gender && <p className="text-xs text-destructive">{errors.gender.message}</p>}
         </div>
 

@@ -2,10 +2,16 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { sanitizePromptValue } from '@/lib/ai/parse'
+import { chat } from '@/lib/ai/client'
+import { isRateLimited } from '@/lib/rate-limit'
+import type { AIMessage } from '@/types/ai'
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
 const OPENROUTER_BASE_URL =
   process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1'
+
+// Whether to use the multi-provider fallback chain instead of direct OpenRouter
+const USE_FALLBACK_CHAIN = true
 
 // Max characters of document content sent to AI.
 // Prevents runaway token usage and prompt injection via huge documents.
@@ -35,7 +41,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized', result: '', _meta: { isFallback: true, reason: 'unauthorized' } }, { status: 401 })
   }
 
-  if (!OPENROUTER_API_KEY) {
+  // Rate limiting: 15 requests per minute per user
+  if (isRateLimited(`ai-enhance:${user.id}`, 15, 60_000)) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait a moment before trying again.', result: '', _meta: { isFallback: true, reason: 'rate_limited' } },
+      { status: 429 }
+    )
+  }
+
+  if (!USE_FALLBACK_CHAIN && !OPENROUTER_API_KEY) {
     return NextResponse.json(
       { error: 'AI service not configured. Set OPENROUTER_API_KEY in .env.local.', result: '', _meta: { isFallback: true, reason: 'not_configured' } },
       { status: 503 }
@@ -127,11 +141,88 @@ STRICT RULES:
 6. Every section heading must be on its own line in this exact format: ## <Section Label>.${contextBlock}`,
     suggest: `You are a dietitian's AI assistant. Based on the patient context and the document content below, provide 3-5 brief, actionable health suggestions relevant to the document's context and the patient's specific conditions and goals. Format each as a bullet point starting with an emoji. Return only the suggestions.${contextBlock}`,
   }
+  // ── Doc-type specific prompt overrides ───────────────────────────────────────────
+  const isFollowUp = docType === 'follow_up_recommendation'
+  const isQuickNote = docType === 'quick_note'
 
+  if (isFollowUp) {
+    systemPrompts.enhance = `You are a clinical documentation assistant improving a follow-up recommendation. The document has sections marked with ## headings (Progress Summary, Recommendations, Next Steps). You MUST follow these rules exactly:
+1. Return the document using the EXACT SAME ## headings in the same order
+2. Improve clinical clarity, structure, and professional tone
+3. Do NOT add new sections, introductions, or preambles
+4. Do NOT include patient background information in the output — use it only to tailor content
+5. Start your response directly with the first ## heading — no introductory text
+6. Every section heading must be on its own line in this exact format: ## <Section Label>${contextBlock}`
+    systemPrompts.patient_friendly = `You are a clinical communication specialist rewriting a follow-up recommendation for patients. The document has sections marked with ## headings. You MUST follow these rules exactly:
+1. Return the document using the EXACT SAME ## headings in the same order
+2. Rewrite each section in simple, warm, encouraging language — no medical jargon
+3. Do NOT add new sections or change the structure
+4. Preserve all clinical recommendations — only simplify the language
+5. Start your response directly with the first ## heading — no introductory text
+6. Every section heading must be on its own line in this exact format: ## <Section Label>${contextBlock}`
+    systemPrompts.suggest = `You are a healthcare AI assistant. Based on the patient context and follow-up document below, provide 3-5 brief, actionable suggestions to support the patient's progress toward their goals. Format each as a bullet point starting with an emoji. Return only the suggestions.${contextBlock}`
+  } else if (isQuickNote) {
+    systemPrompts.enhance = `You are a clinical documentation assistant improving a short clinical note. You MUST follow these rules exactly:
+1. If the note has ## headings, return using the EXACT SAME headings in the same order
+2. Improve grammar, clarity, and professional language
+3. Keep the note concise — do NOT expand it into a lengthy document
+4. Do NOT add clinical assessments, diagnoses, or content not already present
+5. Preserve the exact intent and subject of the original note
+6. Start your response directly with the content — no preamble${contextBlock}`
+    systemPrompts.patient_friendly = `You are a clinical communication specialist simplifying a short clinical note for patients. You MUST follow these rules exactly:
+1. If the note has ## headings, return using the EXACT SAME headings in the same order
+2. Rewrite in simple, warm language a patient can understand — no medical jargon
+3. Keep it brief — do NOT expand the content significantly
+4. Preserve all factual information — only simplify the language
+5. Start your response directly with the content — no preamble${contextBlock}`
+  }
   const systemPrompt = systemPrompts[action]
 
   try {
-    // ── Fetch with 30-second timeout ──────────────────────────────────────
+    const messages: AIMessage[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content },
+    ]
+
+    if (USE_FALLBACK_CHAIN) {
+      // ── Use multi-provider fallback chain ────────────────────────────────
+      let aiResponse
+      try {
+        aiResponse = await chat(messages, {
+          temperature: 0.4,
+          maxTokens: 2048,
+        })
+      } catch (err) {
+        console.error('[AI Document Enhancement] All providers failed | action:', action, '|', String(err))
+        return NextResponse.json(
+          {
+            error: 'AI service temporarily unavailable. Please try again.',
+            result: '',
+            _meta: { isFallback: true, reason: 'all_providers_failed' },
+          },
+          { status: 502 }
+        )
+      }
+
+      const rawResult = aiResponse.content ?? ''
+
+      console.info('[AI Document Enhancement] Response length:', rawResult.length, '| action:', action, '| provider:', aiResponse.provider)
+
+      if (!rawResult.trim()) {
+        console.error('[AI Document Enhancement] Empty response | action:', action)
+        return NextResponse.json(
+          { error: 'AI returned an empty response. Please try again.', result: '', _meta: { isFallback: true, reason: 'empty_response' } },
+          { status: 502 }
+        )
+      }
+
+      return NextResponse.json({
+        result: rawResult.trim(),
+        _meta: { isFallback: false, provider: aiResponse.provider, model: aiResponse.model },
+      })
+    }
+
+    // ── Legacy: Direct OpenRouter fetch with 30-second timeout ─────────────
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 30_000)
 
@@ -199,8 +290,6 @@ STRICT RULES:
       )
     }
 
-    // Keep headings intact for structured actions so the client can map sections
-    // reliably back to blocks. For suggestions, keep full formatting (bullets/emoji).
     const result = rawResult.trim()
 
     if (!result) {

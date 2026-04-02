@@ -1,4 +1,4 @@
-export const APP_NAME = 'Zero'
+export const APP_NAME = 'Strive'
 export const APP_TAGLINE = 'Your complete dietitian practice, simplified.'
 
 // Onboarding steps

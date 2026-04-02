@@ -10,17 +10,21 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   let supabaseResponse: NextResponse
   let user: { id: string } | null = null
+  const isAuthRoute = AUTH_ROUTES.some((r) => pathname.startsWith(r))
 
   try {
     const sessionResult = await updateSession(request)
     supabaseResponse = sessionResult.supabaseResponse
     user = sessionResult.user
   } catch {
+    // Avoid infinite redirects when already on an auth page.
+    if (isAuthRoute) {
+      return NextResponse.next()
+    }
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
   const isProtected = PROTECTED_ROUTES.some((r) => pathname.startsWith(r))
-  const isAuthRoute = AUTH_ROUTES.some((r) => pathname.startsWith(r))
 
   // Unauthenticated user trying to access protected route → redirect to login
   if (isProtected && !user) {

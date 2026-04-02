@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Patients | Strive Clinical</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "on-primary": "#ffffff",
+                "primary-container": "#006699",
+                "outline-variant": "#c0c7d0",
+                "on-primary-fixed": "#001e31",
+                "tertiary-fixed": "#a3f69c",
+                "inverse-on-surface": "#f0f1f2",
+                "on-secondary-fixed-variant": "#394955",
+                "primary": "#004d75",
+                "surface": "#f8f9fa",
+                "error-container": "#ffdad6",
+                "error": "#ba1a1a",
+                "surface-container-high": "#e7e8e9",
+                "on-tertiary-fixed-variant": "#005312",
+                "surface-container-highest": "#e1e3e4",
+                "on-primary-fixed-variant": "#004b72",
+                "surface-container": "#edeeef",
+                "outline": "#707880",
+                "inverse-primary": "#90cdff",
+                "on-tertiary-fixed": "#002204",
+                "surface-bright": "#f8f9fa",
+                "secondary-container": "#d1e2f1",
+                "on-background": "#191c1d",
+                "tertiary-container": "#1e6f26",
+                "surface-container-lowest": "#ffffff",
+                "surface-dim": "#d9dadb",
+                "on-secondary-fixed": "#0d1d28",
+                "on-tertiary-container": "#9cf096",
+                "inverse-surface": "#2e3132",
+                "surface-variant": "#e1e3e4",
+                "primary-fixed": "#cce5ff",
+                "tertiary": "#005513",
+                "primary-fixed-dim": "#90cdff",
+                "on-error": "#ffffff",
+                "on-error-container": "#93000a",
+                "on-secondary-container": "#556572",
+                "surface-container-low": "#f3f4f5",
+                "secondary-fixed-dim": "#b8c9d8",
+                "secondary-fixed": "#d4e5f4",
+                "on-surface-variant": "#40484f",
+                "on-secondary": "#ffffff",
+                "secondary": "#50606d",
+                "on-surface": "#191c1d",
+                "background": "#f8f9fa",
+                "on-primary-container": "#bfe0ff",
+                "tertiary-fixed-dim": "#88d982",
+                "surface-tint": "#006496",
+                "on-tertiary": "#ffffff"
+              },
+              fontFamily: {
+                "headline": ["Manrope"],
+                "body": ["Inter"],
+                "label": ["Inter"]
+              },
+              borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "1.5rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased">
+<!-- Persistent Sidebar (SideNavBar) -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-slate-100 dark:bg-slate-900 flex flex-col py-6 font-manrope antialiased tracking-tight z-50">
+<div class="px-6 mb-10">
+<h1 class="text-xl font-bold text-sky-900 dark:text-sky-100">Strive Clinical</h1>
+<p class="text-xs text-slate-500 font-medium tracking-widest uppercase">Medical Suite</p>
+</div>
+<nav class="flex-1 space-y-1 px-3">
+<a class="flex items-center px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-sky-800 dark:hover:text-sky-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center px-4 py-3 text-sky-900 dark:text-sky-100 font-bold border-r-4 border-sky-700 dark:border-sky-400 bg-white/50 dark:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined mr-3" style="font-variation-settings: 'FILL' 1;">person</span>
+<span>Patients</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-sky-800 dark:hover:text-sky-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3">calendar_today</span>
+<span>Appointments</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-sky-800 dark:hover:text-sky-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3">description</span>
+<span>Templates</span>
+</a>
+</nav>
+<div class="mt-auto px-6 pt-6 border-t border-slate-200 dark:border-slate-800">
+<div class="flex items-center space-x-3">
+<img alt="Dr. Julianne Smith" class="w-10 h-10 rounded-full object-cover" data-alt="Professional headshot of a female doctor in a white clinical coat, smiling confidently in a bright medical office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEcPcq3N28M7Y47ezv3v2mVl-LIPiX97TBJ0ZDdOSPoQEhINDiurj_0w1JiB6xgalx9yezTPidoOkm98-vvaTDqVojJURLtKthp8_3YnOyI88__WrfIdGgE1ZYVh38B7ej0-4iG1Pxd2bnawHy33F2fkfLFOBgnWfw-ks4R5ys8x2QogIU0M0eXfW5ykzWJavSXXqAS4ygLSvAn9uTnqAJhIeqrJ0wWA3YuX9vbxAXWK4LW2HBK4hGJ7MTqfuBhJqpFVxzuz4AbA"/>
+<div>
+<p class="text-sm font-bold text-sky-900 dark:text-sky-100">Dr. J. Smith</p>
+<p class="text-xs text-slate-500">Clinical Director</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Top Navigation (TopNavBar) -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md shadow-sm dark:shadow-none h-16 px-8 flex justify-between items-center font-manrope text-sm font-medium">
+<div class="flex items-center w-1/2">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-xl py-2 pl-10 pr-4 text-on-surface focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Global patient search..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-6">
+<button class="relative p-2 text-slate-600 dark:text-slate-400 hover:text-sky-600 transition-colors focus:ring-2 focus:ring-sky-500 ring-offset-2 rounded-full">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-white"></span>
+</button>
+<div class="h-8 w-[1px] bg-slate-200"></div>
+<div class="flex items-center space-x-2">
+<span class="text-on-surface font-semibold">Strive Clinical</span>
+<span class="material-symbols-outlined text-slate-400">medical_services</span>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="ml-64 pt-16 min-h-screen bg-surface-container-low p-8">
+<!-- Header Section -->
+<div class="flex justify-between items-end mb-8">
+<div>
+<nav class="flex text-xs text-on-surface-variant mb-2 font-medium tracking-wide">
+<span>Directory</span>
+<span class="mx-2">/</span>
+<span class="text-primary">Patients</span>
+</nav>
+<h2 class="text-4xl font-headline font-extrabold text-on-surface tracking-tight">Patients</h2>
+</div>
+<button class="bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-3 rounded-xl font-bold flex items-center shadow-lg shadow-primary/20 hover:scale-[1.02] active:opacity-90 transition-all">
+<span class="material-symbols-outlined mr-2">person_add</span>
+                Add Patient
+            </button>
+</div>
+<!-- Filter Section -->
+<div class="bg-surface-container-lowest rounded-xl p-4 mb-8 flex flex-wrap items-center justify-between gap-4">
+<div class="flex items-center space-x-4">
+<div class="relative min-w-[300px]">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">filter_list</span>
+<input class="w-full bg-surface-container-high border-none rounded-lg py-2 pl-10 pr-4 text-sm focus:ring-1 focus:ring-primary transition-all" placeholder="Filter patient name or ID..." type="text"/>
+</div>
+<div class="flex bg-surface-container-high p-1 rounded-lg">
+<button class="px-4 py-1.5 text-xs font-bold rounded-md bg-white shadow-sm text-primary transition-all">All</button>
+<button class="px-4 py-1.5 text-xs font-medium text-on-surface-variant hover:text-on-surface transition-all">Appointments</button>
+<button class="px-4 py-1.5 text-xs font-medium text-on-surface-variant hover:text-on-surface transition-all">Labs</button>
+<button class="px-4 py-1.5 text-xs font-medium text-on-surface-variant hover:text-on-surface transition-all">Notes</button>
+</div>
+</div>
+<div class="flex items-center space-x-3">
+<button class="flex items-center text-xs font-bold text-on-surface-variant border border-outline-variant/30 rounded-lg px-3 py-2 hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined text-sm mr-2">calendar_month</span>
+                    Date Range
+                </button>
+<button class="flex items-center text-xs font-bold text-on-surface-variant border border-outline-variant/30 rounded-lg px-3 py-2 hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined text-sm mr-2">download</span>
+                    Export CSV
+                </button>
+</div>
+</div>
+<!-- Patient Directory Table -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-high/50 text-on-surface-variant text-xs font-bold uppercase tracking-wider">
+<th class="px-6 py-4">Patient</th>
+<th class="px-6 py-4">Patient ID</th>
+<th class="px-6 py-4">Phone Number</th>
+<th class="px-6 py-4">Primary Goal</th>
+<th class="px-6 py-4">Last Visit</th>
+<th class="px-6 py-4 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<!-- Patient Row 1 -->
+<tr class="hover:bg-slate-50 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center">
+<img alt="Patient" class="w-10 h-10 rounded-full object-cover mr-4 ring-2 ring-transparent group-hover:ring-primary/10 transition-all" data-alt="Close up portrait of a middle aged woman with a gentle expression and short dark hair" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPWaWBIOU1NQe3FYsM5ct0Z8aM60zlvJDqItkssuCHTkOTjC9anobJWrLpk-JxOzf1FH4CPNkYjO8eOSuz0r3aOYOvIa4fcX4mT5iD2CsEDEFObX47ZBXyk6dAXz1iEypzqqANTUJiUDa8aF_71PiFBjwMwNDgu4RhySNeKF2xhAu5fTI1y9MA0FW7-mWJ-0MUsjsRu4oUVraQSXhVH3PPIv_kgIMpxI5zV2EEHxz3-wW1JzEX7FZejT9jE5UVVb7mt2xCPd8edA"/>
+<div>
+<p class="font-bold text-on-surface">Elena Rodriguez</p>
+<p class="text-xs text-on-surface-variant">Female, 42y</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-sm font-medium text-on-surface-variant">SC-9021-X</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">(555) 012-3456</td>
+<td class="px-6 py-5">
+<span class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">Muscle Gain</span>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Oct 12, 2023</td>
+<td class="px-6 py-5 text-right">
+<div class="flex justify-end space-x-2">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<button class="p-2 text-primary hover:bg-primary/5 rounded-lg transition-all">
+<span class="material-symbols-outlined text-xl">chevron_right</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Patient Row 2 -->
+<tr class="hover:bg-slate-50 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center">
+<img alt="Patient" class="w-10 h-10 rounded-full object-cover mr-4 ring-2 ring-transparent group-hover:ring-primary/10 transition-all" data-alt="Headshot of an elderly man with glasses and a kind smile, grey hair, in soft daylight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8fwpqgawBXdhzJnoi82f2-r0rHsuqsPuRNC6smMpapDy9VCmcFRjuhi1y4z5oT5ofQYC1gCGbL84Rvtzn4uXi7PHeAIaB27gXSqQUmFJkn6X4TpKYvdQBITwZfR98p2x9vVt6acF_nNrdAntauHKzHPTCFHloZmUFYKMhP4tIOcGcAv0KPUfxI4JW_mr1WbmhpgHdEUrzcELJndxdLZoPVawm9lu1SUsw3CNrVijUFpG8B1q3W_nfGveQqMw-3Gsiyl3yK9icTA"/>
+<div>
+<p class="font-bold text-on-surface">Arthur Henderson</p>
+<p class="text-xs text-on-surface-variant">Male, 68y</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-sm font-medium text-on-surface-variant">SC-4429-B</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">(555) 098-7654</td>
+<td class="px-6 py-5">
+<span class="bg-error-container text-on-error-container px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">Hypertension Mgmt</span>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Oct 08, 2023</td>
+<td class="px-6 py-5 text-right">
+<div class="flex justify-end space-x-2">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<button class="p-2 text-primary hover:bg-primary/5 rounded-lg transition-all">
+<span class="material-symbols-outlined text-xl">chevron_right</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Patient Row 3 -->
+<tr class="hover:bg-slate-50 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center">
+<img alt="Patient" class="w-10 h-10 rounded-full object-cover mr-4 ring-2 ring-transparent group-hover:ring-primary/10 transition-all" data-alt="Young woman with curly dark hair and clear skin looking forward with a neutral, professional expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDUnAwx__pMf6oDyKbuomFjfju__jr_gA42RWpkvrw1wZjHN91aSrybSFuFWzcSNWcWDB2UOjEUrV3lOmZrQJfrSOWxwSy0UjrJJS74SKlAwoRWIOjylxYU98SEPTvPttlLBC5oJZTiEFh6xwrCILhWBaJIm-VpJtXIPE_P9bZmLnnlUK_EePVmYrWBopapL5xTCzvzsj7XClTVUku-61g-kdJQAb193ddfTPo_n4D17Y7lr8UTno03c2EtQsil50q7xklybtdaAw"/>
+<div>
+<p class="font-bold text-on-surface">Maya Thompson</p>
+<p class="text-xs text-on-surface-variant">Female, 29y</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-sm font-medium text-on-surface-variant">SC-1105-Z</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">(555) 456-7890</td>
+<td class="px-6 py-5">
+<span class="bg-tertiary-fixed text-on-tertiary-fixed px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">Post-Op Recovery</span>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Sep 28, 2023</td>
+<td class="px-6 py-5 text-right">
+<div class="flex justify-end space-x-2">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<button class="p-2 text-primary hover:bg-primary/5 rounded-lg transition-all">
+<span class="material-symbols-outlined text-xl">chevron_right</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Patient Row 4 -->
+<tr class="hover:bg-slate-50 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center">
+<img alt="Patient" class="w-10 h-10 rounded-full object-cover mr-4 ring-2 ring-transparent group-hover:ring-primary/10 transition-all" data-alt="Smiling young man with short brown hair and a friendly, approachable look, studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAa4z_TJnkseXHgqx8DamQi6kIouqbHGpMf_HDPqQA5-PHSq9-uGCvy9TsTYJv2BMvXwv0Yiq6MSzCObEOVrNDYhjPdy9ZunWEF4Hdn-AzXxgLyo_dIdl5EKQ7jsFRrp3dlbxAJicSKJ0LTaDtTo3iwsw1n4jD71R0bZ74ZbqsPTleS37LiqWB5plG1aBmlvNhECicTUkXcWZaVxrm7UZv5YCBDoNFWvYqhYnAEQsYFbN_xr4pChPT7HZReFuxE9e2tPmizfU-xyQ"/>
+<div>
+<p class="font-bold text-on-surface">David Chen</p>
+<p class="text-xs text-on-surface-variant">Male, 34y</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-sm font-medium text-on-surface-variant">SC-5521-M</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">(555) 789-0123</td>
+<td class="px-6 py-5">
+<span class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">Muscle Gain</span>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Sep 22, 2023</td>
+<td class="px-6 py-5 text-right">
+<div class="flex justify-end space-x-2">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<button class="p-2 text-primary hover:bg-primary/5 rounded-lg transition-all">
+<span class="material-symbols-outlined text-xl">chevron_right</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+<!-- Pagination -->
+<div class="bg-surface-container-high/30 px-6 py-4 flex items-center justify-between">
+<p class="text-xs font-medium text-on-surface-variant">Showing 4 of 128 patients</p>
+<div class="flex space-x-2">
+<button class="px-3 py-1.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30 text-xs font-bold text-on-surface-variant hover:bg-surface-container-high transition-all">Previous</button>
+<button class="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-bold shadow-sm transition-all">1</button>
+<button class="px-3 py-1.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30 text-xs font-bold text-on-surface-variant hover:bg-surface-container-high transition-all">2</button>
+<button class="px-3 py-1.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30 text-xs font-bold text-on-surface-variant hover:bg-surface-container-high transition-all">3</button>
+<button class="px-3 py-1.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30 text-xs font-bold text-on-surface-variant hover:bg-surface-container-high transition-all">Next</button>
+</div>
+</div>
+</div>
+<!-- Insight Overlay (Conceptual Hint) -->
+<div class="mt-12 grid grid-cols-3 gap-6">
+<div class="bg-gradient-to-br from-primary-container to-primary text-on-primary p-6 rounded-xl shadow-lg shadow-primary/10">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined p-2 bg-white/20 rounded-lg">group</span>
+<span class="text-xs font-bold uppercase tracking-widest opacity-80">Active Files</span>
+</div>
+<h3 class="text-3xl font-headline font-bold mb-1">1,284</h3>
+<p class="text-xs opacity-70">Total patient directory across all suites</p>
+</div>
+<div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined p-2 bg-tertiary-fixed text-on-tertiary-fixed rounded-lg">trending_up</span>
+<span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">New This Month</span>
+</div>
+<h3 class="text-3xl font-headline font-bold text-on-surface mb-1">+48</h3>
+<p class="text-xs text-on-surface-variant">Increased by 12% from last period</p>
+</div>
+<div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined p-2 bg-secondary-container text-on-secondary-container rounded-lg">clinical_notes</span>
+<span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Pending Reviews</span>
+</div>
+<h3 class="text-3xl font-headline font-bold text-on-surface mb-1">14</h3>
+<p class="text-xs text-on-surface-variant">Lab results requiring clinician sign-off</p>
+</div>
+</div>
+</main>
+</body></html>
