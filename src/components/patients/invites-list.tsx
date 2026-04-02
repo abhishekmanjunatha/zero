@@ -9,13 +9,14 @@ import {
   ExternalLink,
   RefreshCw,
   Send,
+  Trash2,
   XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ListShell, DataTable, MobileCard } from '@/components/shared/list-shell'
 import { cn } from '@/lib/utils'
-import { resendInvite, type PatientInviteRow } from '@/actions/invites'
+import { cancelInvite, resendInvite, type PatientInviteRow } from '@/actions/invites'
 
 interface InvitesListProps {
   invites: PatientInviteRow[]
@@ -133,17 +134,42 @@ function InviteActions({ invite }: { invite: PatientInviteRow }) {
     })
   }
 
+  const handleCancel = () => {
+    if (!confirm('Cancel this invite? The link will no longer work.')) return
+    startTransition(async () => {
+      const result = await cancelInvite(invite.id)
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success('Invite cancelled')
+      router.refresh()
+    })
+  }
+
   if (invite.status === 'pending') {
     return (
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleCopy}
-        className="gap-1.5 text-xs"
-      >
-        {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-        {copied ? 'Copied' : 'Copy Link'}
-      </Button>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleCopy}
+          className="gap-1.5 text-xs"
+        >
+          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? 'Copied' : 'Copy Link'}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleCancel}
+          disabled={isPending}
+          className="gap-1.5 text-xs text-destructive hover:text-destructive"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          <span className="hidden xl:inline">Cancel</span>
+        </Button>
+      </div>
     )
   }
 

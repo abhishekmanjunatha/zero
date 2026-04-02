@@ -13,6 +13,7 @@ const mockCreatePatientInvite = vi.fn().mockResolvedValue({
 vi.mock('@/actions/invites', () => ({
   checkPhoneExists: (...args: unknown[]) => mockCheckPhoneExists(...args),
   createPatientInvite: (...args: unknown[]) => mockCreatePatientInvite(...args),
+  getInviteMessageContext: vi.fn().mockResolvedValue({ dietitianName: 'Dr. Test', clinicName: 'Test Clinic' }),
 }))
 
 vi.mock('@/components/shared/contact-picker-button', () => ({

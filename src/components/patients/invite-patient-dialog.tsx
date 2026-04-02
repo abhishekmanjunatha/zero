@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Check,
@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ContactPickerButton } from '@/components/shared/contact-picker-button'
-import { checkPhoneExists, createPatientInvite } from '@/actions/invites'
+import { checkPhoneExists, createPatientInvite, getInviteMessageContext } from '@/actions/invites'
 
 const COUNTRY_CODES = [
   { code: '+91', label: '🇮🇳 +91', country: 'India' },
@@ -46,8 +46,14 @@ const COUNTRY_CODES = [
   { code: '+968', label: '🇴🇲 +968', country: 'Oman' },
 ]
 
-const DEFAULT_MESSAGE =
+const FALLBACK_MESSAGE =
   'Hi! I\'m inviting you to join my patient directory on Strive. Please fill in your details using the secure link below. This link expires in 48 hours.'
+
+function buildInviteMessage(dietitianName: string, clinicName: string): string {
+  if (!dietitianName) return FALLBACK_MESSAGE
+  const clinic = clinicName || 'our clinic'
+  return `Hi! This is ${dietitianName}, I'm inviting you to signup for ${clinic} on Strive. Please fill in your details using the secure link below. This link expires in 48 hours.`
+}
 
 type DialogState =
   | 'idle'
@@ -74,15 +80,29 @@ export function InvitePatientDialog({ open, onOpenChange }: InvitePatientDialogP
   const [state, setState] = useState<DialogState>('idle')
   const [countryCode, setCountryCode] = useState('+91')
   const [phone, setPhone] = useState('')
-  const [message, setMessage] = useState(DEFAULT_MESSAGE)
+  const [message, setMessage] = useState(FALLBACK_MESSAGE)
+  const [defaultMessage, setDefaultMessage] = useState(FALLBACK_MESSAGE)
   const [inviteUrl, setInviteUrl] = useState('')
   const [copied, setCopied] = useState(false)
   const [duplicateInfo, setDuplicateInfo] = useState<DuplicateInfo | null>(null)
 
+  // Fetch dietitian name + clinic name when dialog opens
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    getInviteMessageContext().then((ctx) => {
+      if (cancelled) return
+      const msg = buildInviteMessage(ctx.dietitianName, ctx.clinicName)
+      setDefaultMessage(msg)
+      setMessage(msg)
+    }).catch(() => { /* keep fallback */ })
+    return () => { cancelled = true }
+  }, [open])
+
   const resetState = () => {
     setState('idle')
     setPhone('')
-    setMessage(DEFAULT_MESSAGE)
+    setMessage(defaultMessage)
     setInviteUrl('')
     setCopied(false)
     setDuplicateInfo(null)
@@ -390,8 +410,8 @@ export function InvitePatientDialog({ open, onOpenChange }: InvitePatientDialogP
 
               {inviteUrl && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
-                    <p className="flex-1 truncate text-xs text-muted-foreground">{inviteUrl}</p>
+                  <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 overflow-hidden">
+                    <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{inviteUrl}</p>
                     <Button
                       type="button"
                       variant="ghost"

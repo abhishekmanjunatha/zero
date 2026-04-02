@@ -56,8 +56,10 @@ vi.mock('@/lib/notifications/server', () => ({
 // ── Import after mocks ────────────────────────────────────────────────────
 
 import {
+  cancelInvite,
   checkPhoneExists,
   createPatientInvite,
+  getInviteMessageContext,
   getPatientInvites,
   resendInvite,
 } from '@/actions/invites'
@@ -222,6 +224,64 @@ describe('Invite Actions', () => {
       expect(result.data).toEqual([])
       // No error = query executed
       expect(result.error).toBeUndefined()
+    })
+  })
+
+  // ── cancelInvite ───────────────────────────────────────────────────────
+
+  describe('cancelInvite', () => {
+    it('returns error when invite not found', async () => {
+      mockSelectSingle.mockResolvedValueOnce({ data: null })
+
+      const result = await cancelInvite('nonexistent')
+
+      expect(result.error).toBe('Invite not found.')
+    })
+
+    it('returns error when invite is not pending', async () => {
+      mockSelectSingle.mockResolvedValueOnce({
+        data: { id: 'inv-1', status: 'completed', dietitian_id: 'dietitian-001' },
+      })
+
+      const result = await cancelInvite('inv-1')
+
+      expect(result.error).toContain('pending')
+    })
+
+    it('cancels a pending invite successfully', async () => {
+      mockSelectSingle.mockResolvedValueOnce({
+        data: { id: 'inv-1', status: 'pending', dietitian_id: 'dietitian-001' },
+      })
+
+      const result = await cancelInvite('inv-1')
+
+      expect(result.error).toBeUndefined()
+    })
+  })
+
+  // ── getInviteMessageContext ────────────────────────────────────────────
+
+  describe('getInviteMessageContext', () => {
+    it('returns dietitian name and clinic name', async () => {
+      mockSelectSingle
+        .mockResolvedValueOnce({ data: { full_name: 'Dr. Smith' } })
+        .mockResolvedValueOnce({ data: { clinic_name: 'Healthy Clinic' } })
+
+      const result = await getInviteMessageContext()
+
+      expect(result.dietitianName).toBe('Dr. Smith')
+      expect(result.clinicName).toBe('Healthy Clinic')
+    })
+
+    it('returns empty strings when data not found', async () => {
+      mockSelectSingle
+        .mockResolvedValueOnce({ data: null })
+        .mockResolvedValueOnce({ data: null })
+
+      const result = await getInviteMessageContext()
+
+      expect(result.dietitianName).toBe('')
+      expect(result.clinicName).toBe('')
     })
   })
 })

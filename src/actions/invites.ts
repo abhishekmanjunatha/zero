@@ -273,7 +273,7 @@ export async function completeInvite(
 
 // ── List invites for the current dietitian ──────────────────────────────────
 
-export type InviteStatusFilter = 'all' | 'pending' | 'completed' | 'expired'
+export type InviteStatusFilter = 'all' | 'pending' | 'completed' | 'expired' | 'cancelled'
 
 interface GetPatientInvitesOptions {
   search?: string
@@ -341,6 +341,76 @@ export interface PatientInviteRow {
   patient_id: string | null
   expires_at: string
   created_at: string
+}
+
+// ── Cancel a pending invite ──────────────────────────────────────────────────
+
+export async function cancelInvite(
+  inviteId: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: invite } = await supabase
+    .from('patient_invites')
+    .select('id, status, dietitian_id')
+    .eq('id', inviteId)
+    .eq('dietitian_id', user.id)
+    .single()
+
+  if (!invite) return { error: 'Invite not found.' }
+
+  const row = invite as { id: string; status: string; dietitian_id: string }
+
+  if (row.status !== 'pending') {
+    return { error: 'Only pending invites can be cancelled.' }
+  }
+
+  const { error } = await supabase
+    .from('patient_invites')
+    .update({ status: 'cancelled' as const })
+    .eq('id', row.id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/patients')
+  revalidatePath('/dashboard')
+
+  return {}
+}
+
+// ── Get dietitian name + clinic name for invite message context ─────────────
+
+export async function getInviteMessageContext(): Promise<{
+  dietitianName: string
+  clinicName: string
+}> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { dietitianName: '', clinicName: '' }
+
+  const [{ data: dietitian }, { data: practice }] = await Promise.all([
+    supabase
+      .from('dietitians')
+      .select('full_name')
+      .eq('id', user.id)
+      .single(),
+    supabase
+      .from('dietitian_practice')
+      .select('clinic_name')
+      .eq('dietitian_id', user.id)
+      .single(),
+  ])
+
+  return {
+    dietitianName: (dietitian as { full_name: string } | null)?.full_name ?? '',
+    clinicName: (practice as { clinic_name: string | null } | null)?.clinic_name ?? '',
+  }
 }
 
 // ── Resend an expired / cancelled invite ────────────────────────────────────
