@@ -209,7 +209,7 @@ export function InvitePatientDialog({ open, onOpenChange }: InvitePatientDialogP
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 px-6 py-5">
+        <div className="min-w-0 space-y-5 px-6 py-5">
           {/* ── Phone Input ── */}
           {(state === 'idle' || state === 'checking') && (
             <>
