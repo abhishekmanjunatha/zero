@@ -2,7 +2,6 @@
 
 import { useState, useCallback } from 'react'
 import {
-  Sparkles,
   CalendarDays,
   TrendingUp,
   Lightbulb,
@@ -13,6 +12,7 @@ import {
   Clock,
   Loader2,
 } from 'lucide-react'
+import { KeerthiAIIcon } from './keerthi-ai-icon'
 import {
   Sheet,
   SheetContent,
@@ -50,7 +50,7 @@ const INSIGHT_OPTIONS = [
     type: 'journey' as InsightType,
     label: 'Journey Summary',
     description: 'Complete story from day 1 to today',
-    icon: Sparkles,
+    icon: KeerthiAIIcon,
     enabled: true,
   },
   {
@@ -159,10 +159,10 @@ export function AIInsightsSheet({ patientId, open, onOpenChange }: AIInsightsShe
             </button>
           )}
           <SheetTitle className="flex items-center gap-2 text-primary">
-            <Sparkles className="h-4 w-4" />
+            <KeerthiAIIcon className="h-4 w-4" />
             {selectedType
-              ? INSIGHT_OPTIONS.find((o) => o.type === selectedType)?.label ?? 'AI Insight'
-              : 'AI Insights'}
+              ? INSIGHT_OPTIONS.find((o) => o.type === selectedType)?.label ?? 'Keerthi AI'
+              : 'Keerthi AI'}
           </SheetTitle>
         </SheetHeader>
 
@@ -200,7 +200,7 @@ function InsightMenu({
   return (
     <div className="space-y-3 py-2">
       <p className="text-xs text-on-surface-variant">
-        Select an insight type to generate an AI-powered summary for this patient.
+        Select an insight type to generate a Keerthi AI summary for this patient.
       </p>
       {options.map((option) => {
         const Icon = option.icon

@@ -13,10 +13,10 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
-  Sparkles,
   UserCheck,
   UserX,
 } from 'lucide-react'
+import { KeerthiAIIcon } from '@/components/shared/keerthi-ai-icon'
 import type { AppointmentWithPatient } from '@/actions/appointments'
 import { updateAppointmentStatus } from '@/actions/appointments'
 import { Button } from '@/components/ui/button'
@@ -253,8 +253,8 @@ export function AppointmentsList({
                                 onClick={() => setAiSheetPatientId(appt.patient.id)}
                                 className="gap-2 cursor-pointer"
                               >
-                                <Sparkles className="h-4 w-4" />
-                                AI Insights
+                                <KeerthiAIIcon className="h-4 w-4" />
+                                Keerthi AI
                               </DropdownMenuItem>
 
                               {isMutable && (
@@ -392,8 +392,8 @@ export function AppointmentsList({
                             onClick={() => setAiSheetPatientId(appt.patient.id)}
                             className="gap-2 cursor-pointer"
                           >
-                            <Sparkles className="h-4 w-4" />
-                            AI Insights
+                            <KeerthiAIIcon className="h-4 w-4" />
+                            Keerthi AI
                           </DropdownMenuItem>
 
                           {isMutable && (

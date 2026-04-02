@@ -21,6 +21,7 @@ import {
   Ban,
   CheckCircle2,
   Loader2,
+  Pencil,
   Pill,
   Sparkles,
   TriangleAlert,
@@ -46,6 +47,7 @@ import type { Tables } from '@/types/database'
 import type { JourneySummaryResponse } from '@/types/ai'
 import { AIScoreDisplay } from '@/components/shared/ai-score-display'
 import { AIInsightsFab } from '@/components/shared/ai-insights-fab'
+import { KeerthiAIIcon } from '@/components/shared/keerthi-ai-icon'
 import { LabTrendsSummary } from '@/components/patients/lab-trends-summary'
 import { toast } from 'sonner'
 
@@ -477,8 +479,8 @@ export function PatientProfileTabs({
 
             <section className="rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 p-4 text-white shadow-[0_18px_30px_-18px_rgba(4,43,73,0.85)]">
               <p className="inline-flex items-center gap-2 text-sm font-extrabold tracking-wide">
-                <Sparkles className="h-4 w-4" />
-                AI Health Insight
+                <KeerthiAIIcon className="h-4 w-4" />
+                Keerthi AI Insight
               </p>
 
               {aiInsight ? (
@@ -502,7 +504,7 @@ export function PatientProfileTabs({
               ) : aiLoading ? (
                 <div className="mt-3 flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin text-white/70" />
-                  <p className="text-sm text-white/70">Generating AI insights…</p>
+                  <p className="text-sm text-white/70">Generating Keerthi AI insights…</p>
                 </div>
               ) : aiError ? (
                 <div className="mt-2">
@@ -518,14 +520,14 @@ export function PatientProfileTabs({
                 </div>
               ) : (
                 <div className="mt-2">
-                  <p className="text-sm text-white/70">Generate an AI-powered health score and clinical insights for this patient.</p>
+                  <p className="text-sm text-white/70">Generate a Keerthi AI health score and clinical insights for this patient.</p>
                   <button
                     type="button"
                     onClick={generateInsight}
                     className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white/20 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-white/30"
                   >
                     <Sparkles className="h-3.5 w-3.5" />
-                    Generate AI Insights
+                    Generate Keerthi AI Insights
                   </button>
                 </div>
               )}
@@ -882,11 +884,21 @@ export function PatientProfileTabs({
                     </p>
                   </div>
 
-                  {report.ai_summary && (
-                    <Badge className="border-0 bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary">
-                      AI Analyzed
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Link
+                      href={`/patients/${patient.id}/lab-reports/${report.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-outline-variant px-2.5 text-[11px] font-semibold text-primary transition-colors hover:bg-surface-container-low"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Edit Metrics
+                    </Link>
+                    {report.ai_summary && (
+                      <Badge className="border-0 bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary">
+                        AI Analyzed
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

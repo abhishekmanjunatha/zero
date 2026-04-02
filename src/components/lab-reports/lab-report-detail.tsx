@@ -7,7 +7,6 @@ import Image from 'next/image'
 import {
   ArrowLeft,
   Activity,
-  Sparkles,
   Loader2,
   AlertTriangle,
   TrendingUp,
@@ -28,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { deleteLabReport, saveAiAnalysis } from '@/actions/lab-reports'
 import { ManualMetricsForm } from '@/components/lab-reports/manual-metrics-form'
+import { KeerthiAIIcon } from '@/components/shared/keerthi-ai-icon'
 import type { Tables } from '@/types/database'
 
 interface LabReportDetailProps {
@@ -323,8 +323,8 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-violet-500" />
-              AI Analysis
+              <KeerthiAIIcon className="h-4 w-4 text-violet-500" />
+              Keerthi AI Analysis
             </CardTitle>
             <Button
               variant="outline"
@@ -345,7 +345,7 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
         <CardContent className="space-y-4">
           {!aiSummary && !aiLoading && (
             <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-              <Sparkles className="h-6 w-6 mx-auto mb-2 opacity-40" />
+              <KeerthiAIIcon className="h-6 w-6 mx-auto mb-2 opacity-40" />
               <p>Click &ldquo;Analyze with AI&rdquo; to extract metrics and get observations.</p>
               <p className="text-xs mt-1 italic">AI observation – not a medical diagnosis</p>
             </div>
