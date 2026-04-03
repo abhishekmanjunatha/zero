@@ -60,6 +60,7 @@ async function getBrowser(): Promise<Browser> {
     // Serverless: use @sparticuz/chromium
     const chromium = await import('@sparticuz/chromium')
     // Must set headless mode before calling executablePath() (required since v120+)
+    // @ts-expect-error - setHeadlessMode is not declared in type definitions but exists at runtime
     chromium.default.setHeadlessMode = true
     executablePath = await chromium.default.executablePath()
     args = chromium.default.args
