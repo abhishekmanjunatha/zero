@@ -6,11 +6,22 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import {
+  Activity,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  Users,
+  CheckCircle2,
+  Circle,
+  Smartphone,
+  X,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { MaterialSymbol } from '@/components/ui/material-symbol'
 import {
   loginSchema,
   registerSchema,
@@ -35,9 +46,9 @@ function PasswordStrengthHints({ password }: { password: string }) {
         {checks.map((check) => (
           <div key={check.label} className="flex items-center gap-1.5 text-xs">
             {check.ok ? (
-              <MaterialSymbol name="check_circle" filled className="text-sm text-tertiary-container" />
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-tertiary-container" />
             ) : (
-              <MaterialSymbol name="radio_button_unchecked" className="text-sm text-outline" />
+              <Circle className="h-3.5 w-3.5 shrink-0 text-outline" />
             )}
             <span className={check.ok ? 'text-tertiary-container' : 'text-outline'}>{check.label}</span>
           </div>
@@ -99,8 +110,7 @@ function LoginForm({ onSwitchToRegister }: { onSwitchToRegister: () => void }) {
       <div className="space-y-1.5">
         <div className="flex items-center justify-between px-1">
           <Label htmlFor="login-password" className="text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-            <span className="lg:hidden">Security Key</span>
-            <span className="hidden lg:inline">Password</span>
+            Password
           </Label>
           <Link
             href="/forgot-password"
@@ -125,7 +135,7 @@ function LoginForm({ onSwitchToRegister }: { onSwitchToRegister: () => void }) {
             className="absolute inset-y-0 right-3 flex items-center text-on-surface-variant transition-colors hover:text-primary"
             aria-label={showPassword ? 'Hide password' : 'Show password'}
           >
-            <MaterialSymbol name={showPassword ? 'visibility_off' : 'visibility'} className="text-xl" />
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
 
@@ -149,15 +159,8 @@ function LoginForm({ onSwitchToRegister }: { onSwitchToRegister: () => void }) {
         className="h-11 w-full rounded-lg bg-gradient-to-br from-primary to-primary-container text-sm font-bold text-white shadow-md hover:opacity-90"
         disabled={isPending}
       >
-        {isPending ? (
-          'Signing in…'
-        ) : (
-          <>
-            <span className="lg:hidden">Sign In</span>
-            <span className="hidden lg:inline">Sign In</span>
-          </>
-        )}
-        {!isPending && <MaterialSymbol name="arrow_forward" className="ml-1 text-xl" />}
+        {isPending ? 'Signing in…' : 'Sign In'}
+        {!isPending && <ArrowRight className="ml-1.5 h-4 w-4" />}
       </Button>
 
       <div className="hidden lg:block">
@@ -175,7 +178,7 @@ function LoginForm({ onSwitchToRegister }: { onSwitchToRegister: () => void }) {
           className="relative flex h-11 w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-outline-variant/50 bg-surface-container-low text-sm font-bold text-on-surface-variant/60"
           disabled
         >
-          <MaterialSymbol name="phone_iphone" className="text-lg" />
+          <Smartphone className="h-4 w-4" />
           Login with Phone OTP
           <span className="absolute -right-2 -top-2 rounded border border-outline-variant/20 bg-surface-container-high px-2 py-0.5 text-[10px] font-black uppercase tracking-tight text-on-surface-variant">
             Coming Soon
@@ -184,17 +187,13 @@ function LoginForm({ onSwitchToRegister }: { onSwitchToRegister: () => void }) {
       </div>
 
       <div className="rounded-xl bg-secondary-container/50 px-3 py-3 text-center lg:mt-8 lg:rounded-none lg:border-t lg:border-outline-variant lg:bg-transparent lg:px-0 lg:pt-6">
-        <p className="text-sm text-on-surface-variant">
-          <span className="lg:hidden">New to the platform?</span>
-          <span className="hidden lg:inline">New to Strive Clinical?</span>
-        </p>
+        <p className="text-sm text-on-surface-variant">New to Strive Clinical?</p>
         <button
           type="button"
           onClick={onSwitchToRegister}
           className="mt-3 h-11 w-full rounded-xl bg-secondary-container text-sm font-semibold text-primary"
         >
-          <span className="lg:hidden">Create Account</span>
-          <span className="hidden lg:inline">Create Account</span>
+          Create Account
         </button>
       </div>
     </form>
@@ -289,7 +288,7 @@ function RegisterForm() {
             className="absolute inset-y-0 right-3 flex items-center text-on-surface-variant transition-colors hover:text-primary"
             aria-label={showPassword ? 'Hide password' : 'Show password'}
           >
-            <MaterialSymbol name={showPassword ? 'visibility_off' : 'visibility'} className="text-xl" />
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
         <PasswordStrengthHints password={passwordValue} />
@@ -315,7 +314,7 @@ function RegisterForm() {
             className="absolute inset-y-0 right-3 flex items-center text-on-surface-variant transition-colors hover:text-primary"
             aria-label={showConfirm ? 'Hide password' : 'Show password'}
           >
-            <MaterialSymbol name={showConfirm ? 'visibility_off' : 'visibility'} className="text-xl" />
+            {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
         {errors.confirmPassword && <p className="mt-1 text-xs text-destructive">{errors.confirmPassword.message}</p>}
@@ -353,7 +352,7 @@ function RegisterForm() {
         disabled={isPending}
       >
         {isPending ? 'Creating account…' : 'Create Dietitian Account'}
-        {!isPending && <MaterialSymbol name="arrow_forward" className="ml-1 text-xl" />}
+        {!isPending && <ArrowRight className="ml-1.5 h-4 w-4" />}
       </Button>
     </form>
   )
@@ -375,76 +374,68 @@ export function AuthTabs({
 
   return (
     <div className="w-full">
-      <header className="flex h-16 items-center justify-between bg-surface px-6 lg:hidden">
-        <div className="flex items-center gap-3">
-          <MaterialSymbol name="monitoring" className="text-primary" />
-          <h1 className="font-headline text-lg font-extrabold tracking-tight text-primary">Strive Clinical</h1>
-        </div>
+      {/* Mobile header */}
+      <header className="flex h-14 items-center gap-2.5 bg-surface px-5 lg:hidden">
+        <Activity className="h-5 w-5 text-primary" />
+        <h1 className="font-headline text-lg font-extrabold tracking-tight text-primary">Strive Clinical</h1>
       </header>
 
-      <section className="relative overflow-hidden bg-tertiary px-8 py-6 text-center lg:hidden">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-10"
-          style={{
-            backgroundImage:
-              'url(https://lh3.googleusercontent.com/aida-public/AB6AXuAqur9usBGC7n7zHtFYIKphtEJYRZFQE1p_eopzJvV2rBoljv8_uO5ZgufOfEXKNLx1AVtBS0Chk4JNn1Y1PjcOMZy70_DsCxyEZOoTuxtXPr6M4TzHPBtampAGfe4a1IhyNRJmto6ndcXXeJ6W0NpDY_qk-BE1_-g1q7pqebMGG_aY38yIkSKjGoDA5Rqm4-CI9KDYgumTVWFz3z3Pv9pwK_eAbHRzNzr0s6Ts6Wn2_98QSF6Hz8wAKqBT9aOOR3mNbXoGtYTXtA)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        />
-        <div className="relative z-10 mx-auto max-w-[290px]">
-          <h2 className="font-headline text-2xl font-extrabold leading-tight tracking-tight text-white">
-            Empowering Clinical Excellence
-          </h2>
-          <p className="mt-2 text-xs leading-relaxed text-tertiary-fixed">
-            The professional tool for modern clinical research and seamless data management.
-          </p>
-
-          <div className="mt-3 flex flex-row flex-wrap justify-center gap-2">
-            <div className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-medium text-white">
-              <MaterialSymbol name="verified" className="text-sm text-tertiary-fixed" />
-              HIPAA Compliant
-            </div>
-            <div className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-medium text-white">
-              <MaterialSymbol name="groups" className="text-sm text-tertiary-fixed" />
-              Researcher Sync
-            </div>
+      {/* Mobile hero */}
+      <section className="bg-primary px-6 py-8 text-center lg:hidden">
+        <h2 className="font-headline text-2xl font-extrabold leading-tight tracking-tight text-white">
+          Empowering Clinical Excellence
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-white/70">
+          The professional tool for modern clinical practice management.
+        </p>
+        <div className="mt-4 flex flex-row flex-wrap justify-center gap-2">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            HIPAA Compliant
+          </div>
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white">
+            <Users className="h-3.5 w-3.5" />
+            Researcher Sync
           </div>
         </div>
       </section>
 
-      <main className="-mt-6 rounded-t-2xl bg-surface-container-low px-4 pb-28 pt-4 lg:mt-0 lg:rounded-none lg:px-0 lg:pb-0 lg:pt-0">
+      <main className="-mt-4 rounded-t-2xl bg-surface-container-low px-4 pb-10 pt-4 lg:mt-0 lg:rounded-none lg:px-0 lg:pb-0 lg:pt-0">
         <div className="mx-auto w-full max-w-md">
           <div className="rounded-xl border border-outline-variant bg-white p-5 shadow-[0_12px_32px_-4px_rgba(25,28,29,0.04)] sm:p-8">
-            <div className="mb-8 hidden rounded-lg bg-surface-container p-1 lg:flex">
-              <button
-                type="button"
-                onClick={() => setActiveTab('login')}
-                className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition-all duration-200 ${
-                  activeTab === 'login' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
-                }`}
-              >
-                Login
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('register')}
-                className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition-all duration-200 ${
-                  activeTab === 'register' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
-                }`}
-              >
-                Register
-              </button>
+
+            {/* Tab switcher — shown on both mobile and desktop */}
+            <div className="mb-6 rounded-lg bg-surface-container p-1">
+              <div className="grid grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('login')}
+                  className={`rounded-lg py-2.5 text-sm font-semibold transition-all duration-200 ${
+                    activeTab === 'login' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('register')}
+                  className={`rounded-lg py-2.5 text-sm font-semibold transition-all duration-200 ${
+                    activeTab === 'register' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  Register
+                </button>
+              </div>
             </div>
 
-            <div className="mb-3 lg:hidden">
-              <h3 className="font-headline text-2xl font-bold text-on-surface">
+            <div className="mb-4">
+              <h3 className="font-headline text-xl font-bold text-on-surface">
                 {activeTab === 'login' ? 'Welcome Back' : 'Create Account'}
               </h3>
               <p className="mt-1 text-sm text-on-surface-variant">
                 {activeTab === 'login'
                   ? 'Sign in to your clinical workspace'
-                  : 'Set up your Strive Clinical account in a few steps.'}
+                  : 'Set up your Strive Clinical account'}
               </p>
             </div>
 
@@ -454,10 +445,10 @@ export function AuthTabs({
                 <button
                   type="button"
                   onClick={() => setDismissCallbackError(true)}
-                  className="mt-0.5 text-destructive transition-colors hover:text-destructive"
+                  className="mt-0.5 shrink-0 text-destructive transition-colors hover:text-destructive"
                   aria-label="Dismiss error"
                 >
-                  <MaterialSymbol name="close" className="text-lg" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
             )}
@@ -469,58 +460,19 @@ export function AuthTabs({
             )}
           </div>
 
-          <footer className="mt-10 hidden items-center justify-between gap-4 sm:flex">
-            <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-outline">
-              © 2024 Clinical Precision Systems.
-            </p>
-            <div className="flex gap-6">
-              <Link href="/privacy" className="text-[10px] font-medium uppercase tracking-[0.15em] text-outline hover:text-primary">
-                Privacy Policy
-              </Link>
-              <Link href="/terms" className="text-[10px] font-medium uppercase tracking-[0.15em] text-outline hover:text-primary">
-                Terms of Service
-              </Link>
-            </div>
-          </footer>
-
-          <footer className="mt-4 flex flex-col items-center gap-2 sm:hidden">
-            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-[10px] font-medium uppercase tracking-[0.15em] text-outline">
-              <Link href="/terms" className="hover:text-primary">Terms of Service</Link>
-              <Link href="/privacy" className="hover:text-primary">Privacy Policy</Link>
-              <a href="#" className="hover:text-primary">Help Center</a>
-            </div>
-            <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
-              <span className="text-tertiary-container">●</span>
-              System Status: All Services Operational
-            </p>
+          <footer className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-1">
+            <Link href="/terms" className="text-[10px] font-medium uppercase tracking-[0.15em] text-outline hover:text-primary">
+              Terms of Service
+            </Link>
+            <Link href="/privacy" className="text-[10px] font-medium uppercase tracking-[0.15em] text-outline hover:text-primary">
+              Privacy Policy
+            </Link>
+            <a href="#" className="text-[10px] font-medium uppercase tracking-[0.15em] text-outline hover:text-primary">
+              Help Center
+            </a>
           </footer>
         </div>
       </main>
-
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-center border-t border-outline-variant bg-white/90 px-4 pb-6 pt-2 backdrop-blur-xl lg:hidden">
-        <div className="grid w-full max-w-[220px] grid-cols-2 gap-4">
-          <button
-            type="button"
-            onClick={() => setActiveTab('login')}
-            className={`inline-flex flex-col items-center justify-center rounded-full px-6 py-1 text-xs font-medium uppercase tracking-wider transition-transform ${
-              activeTab === 'login' ? 'bg-secondary-container text-primary' : 'text-on-surface-variant'
-            }`}
-          >
-            <MaterialSymbol name="login" className="text-lg" />
-            Login
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('register')}
-            className={`inline-flex flex-col items-center justify-center rounded-full px-6 py-1 text-xs font-medium uppercase tracking-wider transition-transform ${
-              activeTab === 'register' ? 'bg-secondary-container text-primary' : 'text-on-surface-variant'
-            }`}
-          >
-            <MaterialSymbol name="person_add" className="text-lg" />
-            Register
-          </button>
-        </div>
-      </nav>
     </div>
   )
 }

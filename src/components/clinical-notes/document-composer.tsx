@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useCallback, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -1178,7 +1178,7 @@ export function DocumentComposer({
       </div>
 
       {/* †•†•†•†•†•†•†•†•†•†•†•†•†•†• Mobile fixed bottom nav †•†•†•†•†•†•†•†•†•†•†•†•†•†• */}
-      <div className="fixed inset-x-0 bottom-16 z-50 lg:hidden bg-white border-t border-outline-variant shadow-lg px-4 py-3">
+      <div className="fixed inset-x-0 bottom-[80px] z-50 lg:hidden bg-white border-t border-outline-variant shadow-lg px-4 py-3">
         <div className="flex gap-3">
           <Button
             type="button"
