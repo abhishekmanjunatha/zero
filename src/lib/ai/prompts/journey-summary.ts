@@ -21,7 +21,7 @@ IMPORTANT RULES:
 SCORING RUBRIC (each sub-score is 0-100):
 - healthProgress: Movement toward the patient's primary goal. Consider weight trends, condition management improvements, dietary adherence signals from notes. Score 0-30 if worsening, 31-50 if stagnant, 51-70 if mild progress, 71-90 if good progress, 91-100 if excellent.
 - engagement: Visit frequency and consistency, follow-up compliance (did they show up for scheduled follow-ups?), lab report upload regularity. Score based on how actively the patient participates.
-- labTrends: Direction of abnormal metrics over time. Are concerning values improving, stable, or worsening? If no labs exist, score 50 (neutral).
+- labTrends: Direction of abnormal metrics over time. Are concerning values improving, stable, or worsening? If no lab reports exist at all, score 0 (no data available).
 - overall: Weighted average — (healthProgress × 0.4) + (engagement × 0.3) + (labTrends × 0.3). Round to nearest integer.
 
 Respond with ONLY valid JSON matching this exact structure:

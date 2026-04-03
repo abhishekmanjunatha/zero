@@ -23,7 +23,7 @@ const combinedScoreSchema = z.object({
   overall: z.number().min(0).max(100).catch(50),
   healthProgress: z.number().min(0).max(100).catch(50),
   engagement: z.number().min(0).max(100).catch(50),
-  labTrends: z.number().min(0).max(100).catch(50),
+  labTrends: z.number().min(0).max(100).catch(0),
 })
 
 const milestoneSchema = z.object({
@@ -51,7 +51,7 @@ const journeySchema = z.object({
     overall: 50,
     healthProgress: 50,
     engagement: 50,
-    labTrends: 50,
+    labTrends: 0,
   }),
   currentStatus: z.string().catch('Unable to determine current status.'),
   recommendations: z
@@ -86,7 +86,7 @@ const JOURNEY_FALLBACK = {
   keyMilestones: [],
   treatmentProgression: '',
   labTrends: '',
-  combinedScore: { overall: 50, healthProgress: 50, engagement: 50, labTrends: 50 },
+  combinedScore: { overall: 50, healthProgress: 50, engagement: 50, labTrends: 0 },
   currentStatus: '',
   recommendations: [],
 }

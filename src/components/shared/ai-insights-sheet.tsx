@@ -166,7 +166,7 @@ export function AIInsightsSheet({ patientId, open, onOpenChange }: AIInsightsShe
           </SheetTitle>
         </SheetHeader>
 
-        <ScrollArea className={cn('flex-1 px-4 pb-4', isMobile ? 'max-h-[70vh]' : 'h-[calc(100vh-80px)]')}>
+        <ScrollArea className={cn('px-4 pb-4 overflow-y-auto', isMobile ? 'max-h-[calc(85vh-100px)]' : 'h-[calc(100vh-80px)]')}>
           {!selectedType ? (
             <InsightMenu options={INSIGHT_OPTIONS} onSelect={fetchInsight} />
           ) : insightState.status === 'loading' ? (
