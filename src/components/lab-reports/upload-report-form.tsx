@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PatientLookup } from '@/components/shared/patient-lookup'
 import { createClient } from '@/lib/supabase/client'
 import { compressForLabUpload } from '@/lib/utils/file-compression'
+import { REPORT_TYPE_LABELS } from '@/lib/constants/labels'
 import { uploadLabReport } from '@/actions/lab-reports'
 
 interface PatientResult {
@@ -260,7 +261,9 @@ export function UploadReportForm({ initialPatientId, lockPatient = false }: Uplo
                 <Label>Report Type</Label>
                 <Select value={reportType} onValueChange={(v) => setReportType(v ?? '')}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Auto-detect by AI" />
+                    <SelectValue placeholder="Auto-detect by AI">
+                      {(value: string) => value ? (REPORT_TYPE_LABELS[value as keyof typeof REPORT_TYPE_LABELS] ?? value) : null}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="blood_test">Blood Test</SelectItem>

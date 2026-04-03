@@ -189,7 +189,9 @@ export function AvailabilityForm({
                 onValueChange={(v) => setSlotDuration(Number(v))}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    {(value: string) => value ? `${value} minutes` : null}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {CONSULTATION_DURATIONS.map((d) => (
@@ -207,7 +209,9 @@ export function AvailabilityForm({
                 onValueChange={(v) => setBufferTime(Number(v))}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    {(value: string) => value ? (Number(value) === 0 ? 'No buffer' : `${value} minutes`) : null}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {BUFFER_TIMES.map((b) => (

@@ -782,7 +782,7 @@ function PracticeTab({ dietitianId, practice, onSaved }: {
       <div className="space-y-1.5">
         <Label>Consultation Duration <span className="text-destructive">*</span></Label>
         <Select defaultValue={String(practice?.consultation_duration ?? 30)} onValueChange={(v) => setValue('consultation_duration', Number(v))}>
-          <SelectTrigger><SelectValue placeholder="Select duration" /></SelectTrigger>
+          <SelectTrigger><SelectValue placeholder="Select duration">{(value: string) => value ? `${value} minutes` : null}</SelectValue></SelectTrigger>
           <SelectContent>
             {CONSULTATION_DURATIONS.map((d) => <SelectItem key={d} value={String(d)}>{d} minutes</SelectItem>)}
           </SelectContent>
@@ -907,7 +907,7 @@ function AvailabilityTab({ availability, onSaved }: {
           <div className="space-y-1.5">
             <Label>Slot Duration</Label>
             <Select value={String(slotDuration)} onValueChange={(v) => setSlotDuration(Number(v))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger><SelectValue>{(value: string) => value ? `${value} minutes` : null}</SelectValue></SelectTrigger>
               <SelectContent>
                 {CONSULTATION_DURATIONS.map((d) => <SelectItem key={d} value={String(d)}>{d} minutes</SelectItem>)}
               </SelectContent>
@@ -916,7 +916,7 @@ function AvailabilityTab({ availability, onSaved }: {
           <div className="space-y-1.5">
             <Label>Buffer Between Appointments</Label>
             <Select value={String(bufferTime)} onValueChange={(v) => setBufferTime(Number(v))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger><SelectValue>{(value: string) => value ? (Number(value) === 0 ? 'No buffer' : `${value} minutes`) : null}</SelectValue></SelectTrigger>
               <SelectContent>
                 {BUFFER_TIMES.map((b) => <SelectItem key={b} value={String(b)}>{b === 0 ? 'No buffer' : `${b} minutes`}</SelectItem>)}
               </SelectContent>

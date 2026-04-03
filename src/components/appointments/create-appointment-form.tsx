@@ -351,7 +351,9 @@ export function CreateAppointmentForm({ recentPatients = [] }: CreateAppointment
                   render={({ field }) => (
                     <Select value={field.value ?? ''} onValueChange={field.onChange}>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select purpose" />
+                        <SelectValue placeholder="Select purpose">
+                          {(value: string) => value ? (PURPOSE_LABELS[value as keyof typeof PURPOSE_LABELS] ?? value) : null}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="new_consultation">New Consultation</SelectItem>

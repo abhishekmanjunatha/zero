@@ -353,7 +353,9 @@ export function PracticeForm({ dietitianId, defaultValues }: PracticeFormProps) 
             onValueChange={(v) => setValue('consultation_duration', Number(v))}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select duration" />
+              <SelectValue placeholder="Select duration">
+                {(value: string) => value ? `${value} minutes` : null}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {CONSULTATION_DURATIONS.map((d) => (
