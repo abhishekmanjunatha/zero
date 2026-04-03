@@ -5,6 +5,9 @@ import { isRateLimited, getClientIp } from '@/lib/rate-limit'
 import { buildDocumentHTML, type PDFTemplateData, type PDFDietitianData, type PDFPatientSnapshot } from '@/lib/pdf/html-template'
 import { renderHTMLToPDF } from '@/lib/pdf/render-server'
 
+// Allow up to 60 seconds for Chromium cold-start + PDF render on Vercel
+export const maxDuration = 60
+
 // ── Request validation ────────────────────────────────────────────────────
 
 const blockSchema = z.object({

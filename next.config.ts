@@ -5,6 +5,11 @@ const nextConfig: NextConfig = {
   // Comment this out for standard Vercel / server deployments
   // output: 'export',
 
+  // Keep Puppeteer + Chromium as external Node modules — they use native
+  // binaries and cannot be bundled by webpack. Required for PDF generation
+  // to work correctly on Vercel serverless functions.
+  serverExternalPackages: ['puppeteer-core', '@sparticuz/chromium'],
+
   turbopack: {
     // Silence workspace root detection warning
     root: __dirname,

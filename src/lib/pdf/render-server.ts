@@ -59,6 +59,8 @@ async function getBrowser(): Promise<Browser> {
   } else {
     // Serverless: use @sparticuz/chromium
     const chromium = await import('@sparticuz/chromium')
+    // Must set headless mode before calling executablePath() (required since v120+)
+    chromium.default.setHeadlessMode = true
     executablePath = await chromium.default.executablePath()
     args = chromium.default.args
   }
@@ -88,7 +90,8 @@ export async function renderHTMLToPDF(html: string): Promise<Buffer> {
   const page = await browser.newPage()
 
   try {
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 15_000 })
+    // 'domcontentloaded' is sufficient for self-contained HTML (no external resources)
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 15_000 })
 
     const pdfBuffer = await page.pdf({
       format: 'A4',
