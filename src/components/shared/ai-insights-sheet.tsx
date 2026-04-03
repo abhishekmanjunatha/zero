@@ -22,7 +22,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { AIScoreDisplay } from './ai-score-display'
 import { useIsMobile } from '@/hooks/use-is-mobile'
-import { cn } from '@/lib/utils'
+import { cn, formatLabel } from '@/lib/utils'
 import { toast } from 'sonner'
 import type {
   InsightType,
@@ -494,10 +494,10 @@ function ExperienceContent({ data }: { data: PatientExperienceResponse }) {
       <div className="flex flex-wrap gap-2">
         <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold', trajectoryColors[data.progressTrajectory])}>
           <TrendingUp className="h-3.5 w-3.5" />
-          {data.progressTrajectory.charAt(0).toUpperCase() + data.progressTrajectory.slice(1)}
+          {formatLabel(data.progressTrajectory)}
         </span>
         <span className={cn('inline-flex items-center rounded-full px-3 py-1 text-xs font-bold', engagementColors[data.engagementLevel])}>
-          Engagement: {data.engagementLevel.charAt(0).toUpperCase() + data.engagementLevel.slice(1)}
+          Engagement: {formatLabel(data.engagementLevel)}
         </span>
       </div>
 

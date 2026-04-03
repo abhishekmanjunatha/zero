@@ -29,6 +29,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getAppointmentStatusMeta } from '@/lib/constants/appointment-status'
 import { cn } from '@/lib/utils'
+import { PURPOSE_LABELS, MODE_LABELS } from '@/lib/constants/labels'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 
@@ -41,17 +42,9 @@ function formatTime(time: string) {
   return `${hour}:${m.toString().padStart(2, '0')} ${period}`
 }
 
-const PURPOSE_CONFIG: Record<TodayAppointment['purpose'], string> = {
-  new_consultation:   'New Consultation',
-  follow_up:          'Follow-up',
-  review_with_report: 'Review with Report',
-  custom:             'Custom',
-}
+const PURPOSE_CONFIG = PURPOSE_LABELS
 
-const MODE_CONFIG: Record<TodayAppointment['mode'], string> = {
-  walk_in:   'Walk-in',
-  scheduled: 'Scheduled',
-}
+const MODE_CONFIG = MODE_LABELS
 
 function getInitials(name: string) {
   return name

@@ -5,6 +5,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Converts a snake_case or kebab-case value into a human-readable Title Case label.
+ * Used as a fallback when no explicit label mapping exists.
+ */
+export function formatLabel(value: string): string {
+  if (!value) return ''
+  return value
+    .replace(/[_-]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
 export async function copyToClipboard(text: string): Promise<boolean> {
   if (!text) return false
 

@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils'
+import { cn, formatLabel } from '@/lib/utils'
 
 type StatusVariant =
   | 'upcoming'
@@ -35,7 +35,7 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, label, className }: StatusBadgeProps) {
   const variant = (status in VARIANT_CLASSES ? status : 'default') as StatusVariant
-  const displayLabel = label ?? status.replace(/_/g, ' ')
+  const displayLabel = label ?? formatLabel(status)
 
   return (
     <span

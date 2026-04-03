@@ -9,7 +9,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { cn, formatLabel } from '@/lib/utils'
+import { GOAL_LABELS, ACTIVITY_LABELS } from '@/lib/constants/labels'
 import { createClient } from '@/lib/supabase/client'
 import { createClinicalNote, updateClinicalNote } from '@/actions/clinical-notes'
 import { createDocumentTemplate, getDocumentTemplates } from '@/actions/templates'
@@ -242,8 +243,8 @@ function buildPatientSnapshotBlock(
     bmi: computeBMI(w, h),
     ibw: ibwVal !== 'N/A' ? `${ibwVal} kg` : 'N/A',
     weightDiff: computeWeightDiff(w, h, patient.gender),
-    primaryGoal: patient.primary_goal?.replace(/_/g, ' ') ?? 'N/A',
-    activityLevel: patient.activity_level?.replace(/_/g, ' ') ?? 'N/A',
+    primaryGoal: patient.primary_goal ? (GOAL_LABELS[patient.primary_goal as keyof typeof GOAL_LABELS] ?? formatLabel(patient.primary_goal)) : 'N/A',
+    activityLevel: patient.activity_level ? (ACTIVITY_LABELS[patient.activity_level as keyof typeof ACTIVITY_LABELS] ?? formatLabel(patient.activity_level)) : 'N/A',
     medicalConditions: patient.medical_conditions?.join(', ') || 'None',
     foodAllergies: patient.food_allergies?.join(', ') || 'None',
     previousWeight: prevW != null ? `${prevW} kg` : 'N/A',

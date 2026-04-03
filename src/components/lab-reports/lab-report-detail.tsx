@@ -24,7 +24,8 @@ import { toast } from 'sonner'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { cn } from '@/lib/utils'
+import { cn, formatLabel } from '@/lib/utils'
+import { REPORT_TYPE_LABELS } from '@/lib/constants/labels'
 import { deleteLabReport, saveAiAnalysis } from '@/actions/lab-reports'
 import { ManualMetricsForm } from '@/components/lab-reports/manual-metrics-form'
 import { KeerthiAIIcon } from '@/components/shared/keerthi-ai-icon'
@@ -81,14 +82,6 @@ function parseStoredAiObservations(
   }
 
   return { metrics: [], observations: [] }
-}
-
-const REPORT_TYPE_LABELS: Record<string, string> = {
-  blood_test: 'Blood Test',
-  thyroid_panel: 'Thyroid Panel',
-  vitamin_panel: 'Vitamin Panel',
-  lipid_profile: 'Lipid Profile',
-  other: 'Other',
 }
 
 function formatDate(iso: string) {
@@ -370,7 +363,7 @@ export function LabReportDetail({ report }: LabReportDetailProps) {
                     </p>
                     {aiMeta.reason && ['timeout', 'parse_failed', 'invalid_structure'].includes(aiMeta.reason) && (
                       <p className="text-xs text-amber-700 mt-0.5 capitalize">
-                        Reason: {aiMeta.reason.replace(/_/g, ' ')}
+                        Reason: {formatLabel(aiMeta.reason)}
                       </p>
                     )}
                   </div>

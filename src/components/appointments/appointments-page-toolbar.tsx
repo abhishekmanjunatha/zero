@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import type { AppointmentWithPatient } from '@/actions/appointments'
 import { cn } from '@/lib/utils'
+import { PURPOSE_LABELS, STATUS_LABELS, MODE_LABELS } from '@/lib/constants/labels'
 import { LinkButton } from '@/components/ui/link-button'
 import { PageHeader } from '@/components/shared/page-header'
 import { SearchInput, UnderlineTabs, DateRangePicker, ExportButton } from '@/components/shared/filter-toolbar'
@@ -32,13 +33,6 @@ const MODE_FILTERS: Array<{ key: ModeKey; label: string }> = [
   { key: 'scheduled', label: 'Scheduled' },
   { key: 'walk_in', label: 'Walk-in' },
 ]
-
-const PURPOSE_LABELS: Record<string, string> = {
-  new_consultation: 'New Consultation',
-  follow_up: 'Follow-up',
-  review_with_report: 'Review with Report',
-  custom: 'Custom',
-}
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-IN', {
@@ -201,7 +195,7 @@ export function AppointmentsPageToolbar({
         appt.mode === 'walk_in' ? 'Walk-in' : 'Scheduled',
         formatDate(appt.appointment_date),
         formatTime(appt.appointment_time),
-        appt.status,
+        STATUS_LABELS[appt.status as keyof typeof STATUS_LABELS] ?? appt.status,
       ]
     })
 

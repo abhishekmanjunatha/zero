@@ -33,6 +33,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { PURPOSE_LABELS } from '@/lib/constants/labels'
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -208,12 +209,7 @@ export function CreateAppointmentForm({ recentPatients = [] }: CreateAppointment
   }
 
   // ── Summary data ─────────────────────────────────────────────────────
-  const PURPOSE_LABELS: Record<string, string> = {
-    new_consultation: 'New Consultation',
-    follow_up: 'Follow-up',
-    review_with_report: 'Review with Report',
-    custom: 'Custom',
-  }
+
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-3xl">

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
+import { formatLabel } from '@/lib/utils'
 import type { DocumentBlock } from '@/types/app'
 
 interface StepContentEditorProps {
@@ -122,7 +123,7 @@ export function StepContentEditor({
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-amber-800">AI could not fully process this. Showing limited or fallback results.</p>
                 {aiMeta.reason && ['timeout', 'parse_failed', 'invalid_structure'].includes(aiMeta.reason) && (
-                  <p className="text-xs text-amber-700 mt-0.5 capitalize">Reason: {aiMeta.reason.replace(/_/g, ' ')}</p>
+                  <p className="text-xs text-amber-700 mt-0.5 capitalize">Reason: {formatLabel(aiMeta.reason)}</p>
                 )}
               </div>
               {lastAiAction && (
@@ -219,7 +220,7 @@ export function StepContentEditor({
             {aiMeta?.isFallback === true && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
                 <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                <p className="text-sm text-amber-800">AI returned limited results. {aiMeta.reason ? `Reason: ${aiMeta.reason.replace(/_/g, ' ')}` : ''}</p>
+                <p className="text-sm text-amber-800">AI returned limited results. {aiMeta.reason ? `Reason: ${formatLabel(aiMeta.reason)}` : ''}</p>
               </div>
             )}
           </div>

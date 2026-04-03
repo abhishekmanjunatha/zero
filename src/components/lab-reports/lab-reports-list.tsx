@@ -34,6 +34,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn, copyToClipboard } from '@/lib/utils'
+import { REPORT_TYPE_LABELS } from '@/lib/constants/labels'
 import { deleteLabReport, generateSecureUploadToken } from '@/actions/lab-reports'
 import type { Tables } from '@/types/database'
 
@@ -45,14 +46,6 @@ interface LabReportsListProps {
   patientName?: string
   fetchError?: string | null
   hideTitle?: boolean
-}
-
-const REPORT_TYPE_LABELS: Record<string, string> = {
-  blood_test: 'Blood Test',
-  thyroid_panel: 'Thyroid Panel',
-  vitamin_panel: 'Vitamin Panel',
-  lipid_profile: 'Lipid Profile',
-  other: 'Other',
 }
 
 function formatDate(iso: string) {

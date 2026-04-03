@@ -4,7 +4,8 @@ import { Loader2, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { cn } from '@/lib/utils'
+import { cn, formatLabel } from '@/lib/utils'
+import { GOAL_LABELS, ACTIVITY_LABELS, GENDER_LABELS, DIETARY_LABELS } from '@/lib/constants/labels'
 import { computeAge, computeBMI, computeIBW, type PatientContext } from '../composer-helpers'
 
 interface StepPatientMeasurementsProps {
@@ -44,12 +45,12 @@ export function StepPatientMeasurements({
             <div className="grid grid-cols-3 gap-3">
               {[
                 { label: 'Age', value: computeAge(patient.date_of_birth) },
-                { label: 'Gender', value: patient.gender ?? 'N/A' },
+                { label: 'Gender', value: patient.gender ? (GENDER_LABELS[patient.gender as keyof typeof GENDER_LABELS] ?? formatLabel(patient.gender)) : 'N/A' },
                 { label: 'Height', value: patient.height_cm ? `${patient.height_cm} cm` : 'N/A' },
                 { label: 'Weight', value: patient.weight_kg ? `${patient.weight_kg} kg` : 'N/A' },
-                { label: 'Goal', value: patient.primary_goal?.replace(/_/g, ' ') ?? 'N/A' },
-                { label: 'Activity', value: patient.activity_level?.replace(/_/g, ' ') ?? 'N/A' },
-                { label: 'Diet', value: patient.dietary_type ?? 'N/A' },
+                { label: 'Goal', value: patient.primary_goal ? (GOAL_LABELS[patient.primary_goal as keyof typeof GOAL_LABELS] ?? formatLabel(patient.primary_goal)) : 'N/A' },
+                { label: 'Activity', value: patient.activity_level ? (ACTIVITY_LABELS[patient.activity_level as keyof typeof ACTIVITY_LABELS] ?? formatLabel(patient.activity_level)) : 'N/A' },
+                { label: 'Diet', value: patient.dietary_type ? (DIETARY_LABELS[patient.dietary_type as keyof typeof DIETARY_LABELS] ?? formatLabel(patient.dietary_type)) : 'N/A' },
                 { label: 'Conditions', value: patient.medical_conditions?.join(', ') || 'None' },
                 { label: 'Allergies', value: patient.food_allergies?.join(', ') || 'None' },
               ].map((item) => (

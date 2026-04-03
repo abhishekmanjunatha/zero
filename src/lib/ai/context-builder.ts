@@ -8,6 +8,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
+import { formatLabel } from '@/lib/utils'
 import type { Tables } from '@/types/database'
 import type { DeidentifiedPatientContext } from '@/types/ai'
 import { deidentifyPatientContext } from './deidentify'
@@ -163,9 +164,9 @@ export function serializeContextForPrompt(
   const ls = ctx.lifestyle
   sections.push(
     `## Lifestyle\n` +
-    `Goal: ${ls.primary_goal?.replace(/_/g, ' ') ?? 'Not set'}\n` +
-    `Activity: ${ls.activity_level?.replace(/_/g, ' ') ?? 'Unknown'}, Sleep: ${ls.sleep_hours ? `${ls.sleep_hours} hrs` : 'Unknown'}\n` +
-    `Work: ${ls.work_type?.replace(/_/g, ' ') ?? 'Unknown'}, Diet: ${ls.dietary_type?.replace(/_/g, ' ') ?? 'Unknown'}`
+    `Goal: ${ls.primary_goal ? formatLabel(ls.primary_goal) : 'Not set'}\n` +
+    `Activity: ${ls.activity_level ? formatLabel(ls.activity_level) : 'Unknown'}, Sleep: ${ls.sleep_hours ? `${ls.sleep_hours} hrs` : 'Unknown'}\n` +
+    `Work: ${ls.work_type ? formatLabel(ls.work_type) : 'Unknown'}, Diet: ${ls.dietary_type ? formatLabel(ls.dietary_type) : 'Unknown'}`
   )
 
   // Medical
@@ -188,7 +189,7 @@ export function serializeContextForPrompt(
     const appts = [...ctx.appointments].reverse().slice(0, 15)
     const lines = appts.map(
       (a) =>
-        `- ${a.date} ${a.time}: ${a.purpose.replace(/_/g, ' ')}${a.custom_purpose ? ` (${a.custom_purpose})` : ''} [${a.status}]${a.notes ? ` — ${a.notes.slice(0, 100)}` : ''}`
+        `- ${a.date} ${a.time}: ${formatLabel(a.purpose)}${a.custom_purpose ? ` (${a.custom_purpose})` : ''} [${a.status}]${a.notes ? ` \u2014 ${a.notes.slice(0, 100)}` : ''}`
     )
     sections.push(`## Appointment History (${ctx.appointments.length} total)\n${lines.join('\n')}`)
   }
@@ -198,7 +199,7 @@ export function serializeContextForPrompt(
     const notes = [...ctx.clinicalNotes].reverse().slice(0, 10)
     const lines = notes.map(
       (n) =>
-        `- ${n.date.split('T')[0]}: [${n.document_type.replace(/_/g, ' ')}] "${n.title}" (v${n.version})\n  ${n.content_summary.slice(0, 300)}`
+        `- ${n.date.split('T')[0]}: [${formatLabel(n.document_type)}] "${n.title}" (v${n.version})\n  ${n.content_summary.slice(0, 300)}`
     )
     sections.push(`## Clinical Notes (${ctx.clinicalNotes.length} total)\n${lines.join('\n')}`)
   }

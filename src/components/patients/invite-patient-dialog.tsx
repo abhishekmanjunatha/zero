@@ -339,7 +339,7 @@ export function InvitePatientDialog({ open, onOpenChange }: InvitePatientDialogP
                 <Button
                   disabled
                   variant="ghost"
-                  className="w-full gap-2 text-muted-foreground"
+                  className="w-full gap-2 text-muted-foreground opacity-50 cursor-not-allowed"
                 >
                   <MessageSquare className="h-4 w-4" />
                   Send via SMS

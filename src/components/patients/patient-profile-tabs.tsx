@@ -44,9 +44,20 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { generateSecureUploadToken, createManualLabReport } from '@/actions/lab-reports'
 import { getAppointmentStatusMeta } from '@/lib/constants/appointment-status'
-import { cn, copyToClipboard } from '@/lib/utils'
+import { cn, copyToClipboard, formatLabel } from '@/lib/utils'
 import type { Tables } from '@/types/database'
 import type { JourneySummaryResponse } from '@/types/ai'
+import {
+  GOAL_LABELS,
+  ACTIVITY_LABELS,
+  DIETARY_LABELS,
+  WORK_LABELS,
+  PURPOSE_LABELS,
+  REPORT_TYPE_LABELS,
+  GENDER_LABELS,
+  DOCUMENT_TYPE_LABELS,
+  TIMELINE_EVENT_LABELS,
+} from '@/lib/constants/labels'
 import { AIScoreDisplay } from '@/components/shared/ai-score-display'
 import { AIInsightsFab } from '@/components/shared/ai-insights-fab'
 import { KeerthiAIIcon } from '@/components/shared/keerthi-ai-icon'
@@ -105,47 +116,6 @@ function formatTime(time: string) {
   const [h, m] = time.split(':').map(Number)
   const period = h >= 12 ? 'PM' : 'AM'
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${period}`
-}
-
-const GOAL_LABELS: Record<string, string> = {
-  weight_loss: 'Weight Loss',
-  muscle_gain: 'Muscle Gain',
-  maintenance: 'Maintenance',
-  condition_management: 'Condition Management',
-}
-
-const ACTIVITY_LABELS: Record<string, string> = {
-  sedentary: 'Sedentary',
-  lightly_active: 'Lightly Active',
-  highly_active: 'Highly Active',
-}
-
-const DIETARY_LABELS: Record<string, string> = {
-  vegetarian: 'Vegetarian',
-  non_vegetarian: 'Non-Vegetarian',
-  vegan: 'Vegan',
-  eggitarian: 'Eggitarian',
-}
-
-const WORK_LABELS: Record<string, string> = {
-  desk_job: 'Desk Job',
-  field_work: 'Field Work',
-  other: 'Other',
-}
-
-const PURPOSE_LABELS: Record<string, string> = {
-  new_consultation: 'New Consultation',
-  follow_up: 'Follow-up',
-  review_with_report: 'Review with Report',
-  custom: 'Custom',
-}
-
-const REPORT_TYPE_LABELS: Record<string, string> = {
-  blood_test: 'Blood Test',
-  thyroid_panel: 'Thyroid Panel',
-  vitamin_panel: 'Vitamin Panel',
-  lipid_profile: 'Lipid Profile',
-  other: 'Other',
 }
 
 const TIMELINE_ICONS: Record<
@@ -459,7 +429,7 @@ export function PatientProfileTabs({
                   label="Age / Gender"
                   value={
                     age !== null || patient.gender
-                      ? `${age !== null ? `${age} y` : '—'}${patient.gender ? ` / ${patient.gender.charAt(0).toUpperCase()}${patient.gender.slice(1).replace('_', ' ')}` : ''}`
+                      ? `${age !== null ? `${age} y` : '—'}${patient.gender ? ` / ${GENDER_LABELS[patient.gender as keyof typeof GENDER_LABELS] ?? formatLabel(patient.gender)}` : ''}`
                       : null
                   }
                 />
@@ -816,11 +786,11 @@ export function PatientProfileTabs({
                   <div>
                     <p className="text-sm font-semibold text-on-surface">{note.title}</p>
                     <p className="mt-0.5 text-xs text-on-surface-variant">
-                      {note.document_type.replace(/_/g, ' ')} · v{note.version} · {formatDate(note.created_at)}
+                      {DOCUMENT_TYPE_LABELS[note.document_type as keyof typeof DOCUMENT_TYPE_LABELS] ?? formatLabel(note.document_type)} · v{note.version} · {formatDate(note.created_at)}
                     </p>
                   </div>
                   <Badge variant="secondary" className="border-0 bg-primary/10 px-3 py-1 text-[11px] font-semibold capitalize text-primary">
-                    {note.document_type.replace(/_/g, ' ')}
+                    {DOCUMENT_TYPE_LABELS[note.document_type as keyof typeof DOCUMENT_TYPE_LABELS] ?? formatLabel(note.document_type)}
                   </Badge>
                 </div>
               ))}
@@ -1011,7 +981,7 @@ export function PatientProfileTabs({
                           const label =
                             event.event_type === 'note_added' && eventData.note
                               ? String(eventData.note)
-                              : event.event_type.replace(/_/g, ' ')
+                              : TIMELINE_EVENT_LABELS[event.event_type] ?? formatLabel(event.event_type)
 
                           return (
                             <div key={event.id} className="relative pb-3">

@@ -88,7 +88,7 @@ function LoginForm({ onSwitchToRegister }: { onSwitchToRegister: () => void }) {
         <Input
           id="login-email"
           type="email"
-          placeholder="dr.smith@clinic.com"
+          placeholder="you@example.com"
           autoComplete="email"
           className="h-11 rounded-lg border-none bg-surface-container-high px-4 text-sm font-medium text-on-surface placeholder:text-outline focus-visible:ring-2 focus-visible:ring-primary/30"
           {...register('email')}
@@ -106,7 +106,7 @@ function LoginForm({ onSwitchToRegister }: { onSwitchToRegister: () => void }) {
             href="/forgot-password"
             className="text-xs font-bold text-primary hover:underline hover:underline-offset-4"
           >
-            Forgot Access?
+            Forgot Password?
           </Link>
         </div>
 
@@ -150,11 +150,11 @@ function LoginForm({ onSwitchToRegister }: { onSwitchToRegister: () => void }) {
         disabled={isPending}
       >
         {isPending ? (
-          'Authenticating…'
+          'Signing in…'
         ) : (
           <>
-            <span className="lg:hidden">Access Workspace</span>
-            <span className="hidden lg:inline">Authenticate Portal</span>
+            <span className="lg:hidden">Sign In</span>
+            <span className="hidden lg:inline">Sign In</span>
           </>
         )}
         {!isPending && <MaterialSymbol name="arrow_forward" className="ml-1 text-xl" />}
@@ -172,12 +172,12 @@ function LoginForm({ onSwitchToRegister }: { onSwitchToRegister: () => void }) {
 
         <button
           type="button"
-          className="relative flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-secondary-container bg-secondary-container/40 text-sm font-bold text-on-surface-variant"
+          className="relative flex h-11 w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-outline-variant/50 bg-surface-container-low text-sm font-bold text-on-surface-variant/60"
           disabled
         >
           <MaterialSymbol name="phone_iphone" className="text-lg" />
           Login with Phone OTP
-          <span className="absolute -right-2 -top-2 rounded border border-tertiary-container/10 bg-tertiary-fixed px-2 py-0.5 text-[10px] font-black uppercase tracking-tight text-tertiary">
+          <span className="absolute -right-2 -top-2 rounded border border-outline-variant/20 bg-surface-container-high px-2 py-0.5 text-[10px] font-black uppercase tracking-tight text-on-surface-variant">
             Coming Soon
           </span>
         </button>
@@ -193,8 +193,8 @@ function LoginForm({ onSwitchToRegister }: { onSwitchToRegister: () => void }) {
           onClick={onSwitchToRegister}
           className="mt-3 h-11 w-full rounded-xl bg-secondary-container text-sm font-semibold text-primary"
         >
-          <span className="lg:hidden">Request Institutional Access</span>
-          <span className="hidden lg:inline">Register for Credentials</span>
+          <span className="lg:hidden">Create Account</span>
+          <span className="hidden lg:inline">Create Account</span>
         </button>
       </div>
     </form>
@@ -247,7 +247,7 @@ function RegisterForm() {
         <Input
           id="reg-name"
           type="text"
-          placeholder="Dr. Jane Smith"
+          placeholder="Your full name"
           autoComplete="name"
           className="h-11 rounded-lg border-none bg-surface-container-high px-4 text-sm font-medium text-on-surface placeholder:text-outline focus-visible:ring-2 focus-visible:ring-primary/30"
           {...register('fullName')}
@@ -262,7 +262,7 @@ function RegisterForm() {
         <Input
           id="reg-email"
           type="email"
-          placeholder="name@clinic.com"
+          placeholder="you@example.com"
           autoComplete="email"
           className="h-11 rounded-lg border-none bg-surface-container-high px-4 text-sm font-medium text-on-surface placeholder:text-outline focus-visible:ring-2 focus-visible:ring-primary/30"
           {...register('email')}
@@ -439,7 +439,7 @@ export function AuthTabs({
 
             <div className="mb-3 lg:hidden">
               <h3 className="font-headline text-2xl font-bold text-on-surface">
-                {activeTab === 'login' ? 'Welcome Back' : 'Create Credentials'}
+                {activeTab === 'login' ? 'Welcome Back' : 'Create Account'}
               </h3>
               <p className="mt-1 text-sm text-on-surface-variant">
                 {activeTab === 'login'

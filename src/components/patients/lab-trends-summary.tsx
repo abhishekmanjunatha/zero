@@ -2,6 +2,8 @@
 
 import { TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react'
 import type { Tables } from '@/types/database'
+import { REPORT_TYPE_LABELS } from '@/lib/constants/labels'
+import { formatLabel } from '@/lib/utils'
 
 interface Metric {
   name: string
@@ -40,13 +42,7 @@ function parseAiObservations(value: unknown): Metric[] {
   )
 }
 
-const REPORT_TYPE_LABELS: Record<string, string> = {
-  blood_test: 'Blood Test',
-  thyroid_panel: 'Thyroid Panel',
-  vitamin_panel: 'Vitamin Panel',
-  lipid_profile: 'Lipid Profile',
-  other: 'Other',
-}
+
 
 const STATUS_COLOR: Record<string, string> = {
   normal: 'bg-emerald-500',
@@ -103,7 +99,7 @@ export function LabTrendsSummary({
         {parsed.map((report, ri) => (
           <div key={ri}>
             <p className="text-xs font-bold text-on-surface-variant mb-1.5">
-              {REPORT_TYPE_LABELS[report.reportType] ?? report.reportType.replace('_', ' ')}
+              {REPORT_TYPE_LABELS[report.reportType as keyof typeof REPORT_TYPE_LABELS] ?? formatLabel(report.reportType)}
               <span className="ml-1.5 font-normal">
                 · {new Date(report.reportDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
               </span>
@@ -141,7 +137,7 @@ export function LabTrendsSummary({
         return (
           <div key={ri}>
             <div className="mb-1 flex items-center justify-between text-xs font-semibold text-on-surface-variant">
-              <span>{REPORT_TYPE_LABELS[report.reportType] ?? report.reportType.replace('_', ' ')}</span>
+              <span>{REPORT_TYPE_LABELS[report.reportType as keyof typeof REPORT_TYPE_LABELS] ?? formatLabel(report.reportType)}</span>
               <span className="flex items-center gap-1.5">
                 {flaggedCount > 0 && (
                   <span className="text-orange-600">{flaggedCount} flagged</span>

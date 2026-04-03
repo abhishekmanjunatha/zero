@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react'
 import type { Tables } from '@/types/database'
+import { GOAL_LABELS } from '@/lib/constants/labels'
 import { ListShell, DataTable, MobileCard, AvatarCircle } from '@/components/shared/list-shell'
 
 type PatientAction = 'upload-lab' | 'write-note' | 'create-appointment'
@@ -21,13 +22,6 @@ interface PatientsListProps {
   searchQuery: string
   fetchError?: string | null
   action?: PatientAction
-}
-
-const GOAL_LABELS: Record<string, string> = {
-  weight_loss: 'Weight Loss',
-  muscle_gain: 'Muscle Gain',
-  maintenance: 'Maintenance',
-  condition_management: 'Condition Management',
 }
 
 function formatDate(dateStr: string | null) {

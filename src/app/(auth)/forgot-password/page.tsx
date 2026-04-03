@@ -61,7 +61,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div>
-              <h1 className="font-headline text-2xl font-bold text-on-surface">Forgot Access?</h1>
+              <h1 className="font-headline text-2xl font-bold text-on-surface">Forgot Password?</h1>
               <p className="mt-1 text-sm text-on-surface-variant">
                 Enter your registered email and we will send a secure reset link.
               </p>
@@ -80,7 +80,7 @@ export default function ForgotPasswordPage() {
               <Input
                 id="fpw-email"
                 type="email"
-                placeholder="name@clinic.com"
+                placeholder="you@example.com"
                 autoComplete="email"
                 className="h-11 rounded-lg border-none bg-surface-container-high px-4 text-sm font-medium text-on-surface placeholder:text-outline focus-visible:ring-2 focus-visible:ring-primary/30"
                 {...register('email')}

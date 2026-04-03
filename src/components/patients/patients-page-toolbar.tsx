@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import type { Tables } from '@/types/database'
 import { cn } from '@/lib/utils'
+import { GOAL_LABELS } from '@/lib/constants/labels'
 import { LinkButton } from '@/components/ui/link-button'
 import { PageHeader } from '@/components/shared/page-header'
 import { SearchInput, SegmentedTabs, DateRangePicker, ExportButton } from '@/components/shared/filter-toolbar'
@@ -37,13 +38,6 @@ interface PatientsPageToolbarProps {
   patientsForExport: Tables<'patients'>[]
   action?: 'upload-lab' | 'write-note' | 'create-appointment'
   view?: PageView
-}
-
-const GOAL_LABELS: Record<string, string> = {
-  weight_loss: 'Weight Loss',
-  muscle_gain: 'Muscle Gain',
-  maintenance: 'Maintenance',
-  condition_management: 'Condition Management',
 }
 
 function toCsvSafe(value: string) {

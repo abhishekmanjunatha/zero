@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import { getAppointmentStatusMeta } from '@/lib/constants/appointment-status'
+import { PURPOSE_LABELS } from '@/lib/constants/labels'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { AvatarCircle } from '@/components/shared/list-shell'
 import { AIInsightsSheet } from '@/components/shared/ai-insights-sheet'
@@ -37,13 +38,6 @@ import { cn } from '@/lib/utils'
 interface AppointmentsListProps {
   appointments: AppointmentWithPatient[]
   fetchError?: string | null
-}
-
-const PURPOSE_LABELS: Record<string, string> = {
-  new_consultation: 'New Consultation',
-  follow_up: 'Follow-up',
-  review_with_report: 'Review with Report',
-  custom: 'Custom',
 }
 
 function formatDate(dateStr: string) {
