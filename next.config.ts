@@ -10,6 +10,13 @@ const nextConfig: NextConfig = {
   // to work correctly on Vercel serverless functions.
   serverExternalPackages: ['puppeteer-core', '@sparticuz/chromium'],
 
+  // Force Next.js file tracing to include the Chromium binary assets (.br files)
+  // for the PDF route. Without this, the bin/ directory is excluded from the
+  // Vercel Lambda bundle and executablePath() fails at runtime.
+  outputFileTracingIncludes: {
+    '/api/pdf/generate': ['./node_modules/@sparticuz/chromium/**/*'],
+  },
+
   turbopack: {
     // Silence workspace root detection warning
     root: __dirname,
