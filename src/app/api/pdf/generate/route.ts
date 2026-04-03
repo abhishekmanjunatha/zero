@@ -97,11 +97,32 @@ export async function POST(request: NextRequest) {
 
   const { docTitle, documentType, dietitian, patientSnapshot, blocks, siteName } = parsed.data
 
+  // If the dietitian has a remote logo URL, fetch it and convert to a base64
+  // data URI so the HTML is fully self-contained for Puppeteer. This avoids
+  // relying on Chromium making an outbound network request inside a Lambda,
+  // and lets us use the faster 'domcontentloaded' waitUntil strategy.
+  let resolvedLogoUrl: string | undefined = dietitian.logoUrl || undefined
+  if (resolvedLogoUrl?.startsWith('https://')) {
+    try {
+      const imgResponse = await fetch(resolvedLogoUrl)
+      if (imgResponse.ok) {
+        const contentType = imgResponse.headers.get('content-type') ?? 'image/jpeg'
+        const buffer = await imgResponse.arrayBuffer()
+        const base64 = Buffer.from(buffer).toString('base64')
+        resolvedLogoUrl = `data:${contentType};base64,${base64}`
+      } else {
+        resolvedLogoUrl = undefined // fall back to Strive SVG
+      }
+    } catch {
+      resolvedLogoUrl = undefined // fall back to Strive SVG
+    }
+  }
+
   // Build HTML
   const templateData: PDFTemplateData = {
     docTitle,
     documentType,
-    dietitian: dietitian as PDFDietitianData,
+    dietitian: { ...(dietitian as PDFDietitianData), logoUrl: resolvedLogoUrl },
     patientSnapshot: (patientSnapshot ?? null) as PDFPatientSnapshot | null,
     blocks: blocks as PDFTemplateData['blocks'],
     siteName,
